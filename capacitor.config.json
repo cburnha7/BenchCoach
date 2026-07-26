@@ -1,0 +1,13 @@
+{
+  "appId": "com.charlesburnham.benchcoach",
+  "appName": "Bench Coach",
+  "webDir": "www",
+  "backgroundColor": "#0e1320",
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#0e1320"
+  },
+  "server": {
+    "iosScheme": "app"
+  }
+}

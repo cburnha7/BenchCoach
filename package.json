@@ -1,0 +1,19 @@
+{
+  "name": "bench-coach",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bench Coach - youth sports lineups, minutes, and tactics. All data on-device.",
+  "scripts": {
+    "sync": "cap sync ios",
+    "assets": "capacitor-assets generate --ios",
+    "open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.1.2"
+  }
+}
