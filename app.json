@@ -31,7 +31,11 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0e1320"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -52,6 +56,18 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0173822a-bbeb-49f8-b608-be1efcb9c495"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/0173822a-bbeb-49f8-b608-be1efcb9c495"
     }
   }
 }
