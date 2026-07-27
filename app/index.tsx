@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StadiumBackdrop } from '../src/components/StadiumBackdrop';
@@ -120,22 +120,41 @@ export default function Home() {
     <View style={styles.screen}>
       <StadiumBackdrop />
 
-      <View style={styles.topBar}>
-        <Text style={styles.wordmark}>Bench Coach</Text>
-        <Pressable
-          onPress={() => setEditing((e) => !e)}
-          hitSlop={10}
-          style={styles.editBtn}
-        >
-          <Text style={styles.editBtnText}>{editing ? 'Done' : 'Edit'}</Text>
-        </Pressable>
-      </View>
+      {/*
+        Edit lives in the navigation header rather than a row of its own: the
+        header was already showing the app name, so a second bar underneath it
+        was a duplicate title and a wasted 44pt of screen.
+      */}
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable
+              onPress={() => setEditing((e) => !e)}
+              hitSlop={10}
+              style={({ pressed }) => [
+                styles.editBtn,
+                editing && styles.editBtnOn,
+                pressed && styles.editPressed,
+              ]}
+            >
+              <Text style={[styles.editBtnText, editing && styles.editBtnTextOn]}>
+                {editing ? 'Done' : 'Edit'}
+              </Text>
+            </Pressable>
+          ),
+        }}
+      />
 
       <FlatList
         data={teams}
         keyExtractor={(t) => t.id}
         renderItem={renderTeam}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[
+          styles.list,
+          // Transparent header means content starts at the top of the screen,
+          // so the first card has to clear it manually.
+          { paddingTop: insets.top + 52 },
+        ]}
         ListEmptyComponent={
           hydrated ? (
             <View style={styles.empty}>
@@ -221,28 +240,18 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.bg },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
-  wordmark: {
-    color: theme.text,
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
   editBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: radius.pill,
     backgroundColor: theme.control,
     borderWidth: 1,
     borderColor: theme.controlBorder,
   },
+  editBtnOn: { backgroundColor: theme.text, borderColor: theme.text },
+  editPressed: { opacity: 0.75 },
   editBtnText: { color: theme.text, fontSize: 14, fontWeight: '700' },
+  editBtnTextOn: { color: theme.bg },
   editPill: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -250,7 +259,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.text,
   },
   editPillText: { color: theme.bg, fontWeight: '800', fontSize: 13 },
-  list: { padding: 16, gap: 11 },
+  list: { paddingHorizontal: 16, paddingBottom: 16, gap: 11 },
   teamCard: {
     height: 88,
     borderRadius: radius.lg,
@@ -304,7 +313,7 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   teamMeta: { color: 'rgba(255,255,255,0.78)', fontSize: 13, fontWeight: '600' },
-  empty: { paddingTop: 90, paddingHorizontal: 30, alignItems: 'center' },
+  empty: { paddingTop: 60, paddingHorizontal: 30, alignItems: 'center' },
   emptyTitle: { color: theme.text, fontSize: 19, fontWeight: '700' },
   emptyBody: {
     color: theme.textDim,

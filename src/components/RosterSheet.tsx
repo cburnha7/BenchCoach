@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScanSheet } from './ScanSheet';
 import { useMatch } from '../store/useMatch';
 import { formatClock, type Player } from '../lib/types';
 import { theme, radius } from '../lib/theme';
@@ -44,6 +45,7 @@ export function RosterSheet({
   const bringOn = useMatch((s) => s.bringOn);
 
   const [name, setName] = useState('');
+  const [scanning, setScanning] = useState(false);
 
   if (!match) return null;
 
@@ -136,6 +138,11 @@ export function RosterSheet({
           </View>
         </View>
 
+        <Pressable style={styles.scanBtn} onPress={() => setScanning(true)}>
+          <Text style={styles.scanIcon}>📷</Text>
+          <Text style={styles.scanText}>Scan a roster photo</Text>
+        </Pressable>
+
         <View style={styles.addRow}>
           <TextInput
             value={name}
@@ -187,6 +194,12 @@ export function RosterSheet({
         >
           <Text style={styles.doneText}>Done</Text>
         </Pressable>
+
+        <ScanSheet
+          visible={scanning}
+          onClose={() => setScanning(false)}
+          onImport={(found) => found.forEach((n) => addPlayer(n))}
+        />
       </View>
     </Modal>
   );
@@ -199,7 +212,22 @@ const styles = StyleSheet.create({
   headerInner: { flex: 1, paddingLeft: 14, paddingRight: 18 },
   title: { color: theme.text, fontSize: 26, fontWeight: '800', letterSpacing: -0.4 },
   headerSub: { color: theme.textDim, fontSize: 13, marginTop: 4, fontWeight: '500' },
-  addRow: { flexDirection: 'row', gap: 8, padding: 16 },
+  scanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+    marginHorizontal: 16,
+    marginTop: 14,
+    paddingVertical: 14,
+    borderRadius: radius.lg,
+    backgroundColor: theme.control,
+    borderWidth: 1,
+    borderColor: theme.controlBorder,
+  },
+  scanIcon: { fontSize: 17 },
+  scanText: { color: theme.text, fontWeight: '700', fontSize: 15 },
+  addRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 12 },
   input: {
     flex: 1,
     backgroundColor: theme.control,

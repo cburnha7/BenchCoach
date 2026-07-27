@@ -21,7 +21,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [],
-        "NSPhotoLibraryUsageDescription": "Bench Coach uses your photos so you can put a team photo on each team."
+        "NSPhotoLibraryUsageDescription": "Bench Coach uses your photos so you can put a team photo on each team.",
+        "NSCameraUsageDescription": "Bench Coach uses the camera so you can scan a printed roster and import the player names."
       }
     },
     "android": {
@@ -50,7 +51,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Bench Coach uses your photos so you can put a team photo on each team."
+          "photosPermission": "Bench Coach uses your photos so you can put a team photo on each team.",
+          "cameraPermission": "Bench Coach uses the camera so you can scan a printed roster and import the player names."
         }
       ]
     ],

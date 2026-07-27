@@ -18,7 +18,17 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: theme.bg },
           }}
         >
-          <Stack.Screen name="index" options={{ title: 'Bench Coach' }} />
+          <Stack.Screen
+            name="index"
+            options={{
+              title: 'Bench Coach',
+              // Transparent so the stadium photo runs behind it. The backdrop
+              // already puts a dark scrim under this area for legibility.
+              headerTransparent: true,
+              headerStyle: { backgroundColor: 'transparent' },
+              headerShadowVisible: false,
+            }}
+          />
           <Stack.Screen name="team/[id]" options={{ title: '' }} />
         </Stack>
       </SafeAreaProvider>
