@@ -49,69 +49,51 @@ export const FORMATIONS: Record<TeamSize, Formation[]> = {
   ],
 };
 
-/** Position codes for one line, by role and how many players are in it. */
-function lineCodes(role: 'D' | 'M' | 'F', n: number): string[] {
-  const table: Record<'D' | 'M' | 'F', Record<number, string[]>> = {
-    D: {
-      1: ['CB'],
-      2: ['LB', 'RB'],
-      3: ['LB', 'CB', 'RB'],
-      4: ['LB', 'LCB', 'RCB', 'RB'],
-      5: ['LB', 'LCB', 'CB', 'RCB', 'RB'],
-    },
-    M: {
-      1: ['CM'],
-      2: ['LM', 'RM'],
-      3: ['LM', 'CM', 'RM'],
-      4: ['LM', 'LCM', 'RCM', 'RM'],
-      5: ['LM', 'LCM', 'CM', 'RCM', 'RM'],
-    },
-    F: {
-      1: ['ST'],
-      2: ['LS', 'RS'],
-      3: ['LW', 'ST', 'RW'],
-    },
-  };
-  return table[role][n] ?? Array<string>(n).fill(role);
+/**
+ * A position code for one outfield slot from its role and where it sits.
+ * `x` gives the side (600 wide, centre 300); `y` gives depth (own goal high,
+ * opponent goal low) which separates a holding mid from an attacking one.
+ */
+function slotCode(role: 'D' | 'M' | 'F', x: number, y: number): string {
+  const side = x < 200 ? 'L' : x > 400 ? 'R' : 'C';
+  if (role === 'D') return side === 'C' ? 'CB' : `${side}B`;
+  if (role === 'F') return side === 'C' ? 'ST' : `${side}W`;
+  // Midfield: wide slots are flank mids; central slots split by depth.
+  if (side !== 'C') return `${side}M`;
+  if (y >= 470) return 'CDM';
+  if (y <= 320) return 'CAM';
+  return 'CM';
 }
 
 /**
- * A human position code (GK, CB, LM, ST, …) for every slot of a formation,
- * derived from its name. Slot 0 is always the keeper; the remaining lines read
- * defence → attack, and within a line left → right by x. Used to label empty
- * starter slots on the board so the shape is legible before players are added.
+ * A human position code (GK, CB, CDM, LW, ST, …) for every slot of a formation.
+ * The line each slot belongs to is read from the formation name (defence →
+ * attack); the exact code then comes from the slot's position. Used to label
+ * empty starter slots on the board so the shape is legible before players load.
  */
 export function positionLabels(size: TeamSize, idx: number): string[] {
-  const formation = FORMATIONS[size][idx];
-  const slots = formation.slots;
+  const { name, slots } = FORMATIONS[size][idx];
   // Outfield line counts from the name, dropping qualifiers like "Diamond".
-  const lines = formation.name
+  const lines = name
     .split(/\s+/)[0]
     .split('-')
     .map((n) => parseInt(n, 10))
     .filter((n) => Number.isFinite(n) && n > 0);
 
-  const labels = new Array<string>(slots.length).fill('·');
-  labels[0] = 'GK';
-
+  const roles = new Array<'GK' | 'D' | 'M' | 'F'>(slots.length).fill('M');
+  roles[0] = 'GK';
   let cursor = 1;
   lines.forEach((count, lineNo) => {
     const role: 'D' | 'M' | 'F' =
       lineNo === 0 ? 'D' : lineNo === lines.length - 1 ? 'F' : 'M';
-    // The line's slots are consecutive in the array; order them left → right.
-    const idxs: number[] = [];
-    for (let k = 0; k < count && cursor + k < slots.length; k++) {
-      idxs.push(cursor + k);
+    for (let k = 0; k < count && cursor < slots.length; k++, cursor++) {
+      roles[cursor] = role;
     }
-    idxs.sort((a, b) => slots[a].x - slots[b].x);
-    const codes = lineCodes(role, count);
-    idxs.forEach((si, i) => {
-      labels[si] = codes[i] ?? role;
-    });
-    cursor += count;
   });
 
-  return labels;
+  return slots.map((s, i) =>
+    roles[i] === 'GK' ? 'GK' : slotCode(roles[i] as 'D' | 'M' | 'F', s.x, s.y)
+  );
 }
 
 /** Opponent slots: mirrored across the halfway line, compressed to 90%. */
