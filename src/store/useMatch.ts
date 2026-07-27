@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import { create } from 'zustand';
 import { storage, matchKey } from './storage';
 import {
@@ -173,6 +174,10 @@ export const useMatch = create<MatchStore>((set, get) => {
     },
 
     unload: () => {
+      // Flush the exact current state before dropping it from memory, so the
+      // lineup is safe even if the last mutation's write hadn't landed yet.
+      const m = get().match;
+      if (m) void storage.write(matchKey(m.teamId), m);
       stop();
       set({ match: null });
     },
@@ -650,6 +655,12 @@ export const useMatch = create<MatchStore>((set, get) => {
       }));
     },
   };
+});
+
+// Flush the current match to disk whenever the app leaves the foreground, so
+// the lineup survives being closed even if a per-mutation write was mid-flight.
+AppState.addEventListener('change', (state) => {
+  if (state !== 'active') void useMatch.getState().save();
 });
 
 export const onFieldCount = (m: MatchState) =>
