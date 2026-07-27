@@ -15,6 +15,8 @@ import { badgeLabel, type Card, type Player } from '../lib/types';
 export const DISC_R = 30;
 /** Extra touch radius (field units) around the disc, for a generous tap area. */
 const TAP_PAD = 14;
+/** Movement (field units) under which a hold-release counts as a tap, not a drag. */
+const TAP_SLOP = 7;
 
 type Props = {
   player: Player;
@@ -96,14 +98,15 @@ function PlayerDiscBase({
    * Gesture model, matching the original app:
    *   hold then drag  — move the player
    *   double tap      — give the ball, or play a pass to them
-   *   single tap      — open the action sheet (subs, badge, scratch)
+   *   single tap      — open the action sheet (subs, cards)
    *
-   * Pan only activates after a hold, so a tap can never be swallowed by a
-   * stray few pixels of finger movement. The single tap waits for the double
-   * tap to fail, which is what makes both work on the same target.
+   * Reliability of the single tap is the priority: it has no duration cap, and
+   * a hold that ends without moving falls back to a tap (see pan.onEnd) so a
+   * lingering press is never lost. The tap waits only the short double-tap
+   * window before firing, which is what makes both work on one target.
    */
   const pan = Gesture.Pan()
-    .activateAfterLongPress(220)
+    .activateAfterLongPress(200)
     .onStart(() => {
       originX.value = x.value;
       originY.value = y.value;
@@ -116,6 +119,13 @@ function PlayerDiscBase({
     })
     .onEnd(() => {
       pressed.value = withTiming(0, { duration: 160 });
+      // A hold that never moved is a tap the pan happened to swallow — open the
+      // action sheet instead of committing a no-op "move".
+      const moved = Math.hypot(x.value - originX.value, y.value - originY.value);
+      if (moved < TAP_SLOP) {
+        runOnJS(onTap)(player.id);
+        return;
+      }
       runOnJS(onMove)(player.id, x.value, y.value);
       runOnJS(onDragEnd)(
         player.id,
@@ -125,17 +135,17 @@ function PlayerDiscBase({
       );
     });
 
+  // Short delay so a single tap resolves quickly; no duration cap so a slow
+  // tap still counts.
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
-    .maxDuration(260)
-    .maxDelay(260)
+    .maxDelay(180)
     .onEnd((_e, success) => {
       if (success) runOnJS(ball)(player.id);
     });
 
   const singleTap = Gesture.Tap()
     .numberOfTaps(1)
-    .maxDuration(260)
     .onEnd((_e, success) => {
       if (success) runOnJS(onTap)(player.id);
     });
