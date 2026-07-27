@@ -6,32 +6,36 @@ import { badgeLabel } from '../lib/types';
 import { theme, radius, glass } from '../lib/theme';
 
 type Props = {
-  /** On-field player being subbed off, or null when closed. */
+  /** On-field player being subbed off, or null. */
   outId: string | null;
+  /** An open spot on the pitch to bring a player straight onto, or null. */
+  slot: { x: number; y: number } | null;
   onClose: () => void;
   color: string;
 };
 
 /**
- * Tap an on-field player to sub them off. This sheet is just the bench, least
- * playing time first, minus anyone already in a queued sub. Tapping a name
- * queues the swap — it isn't made until the Subs button on the field is hit.
+ * Two ways in: tap an on-field player to sub them off (queues a swap), or tap
+ * an open spot to bring someone straight on. Either way this is just the bench,
+ * least playing time first, minus anyone scratched, sent off, or already in a
+ * queued sub. Cards are only offered when subbing a specific player off.
  */
-export function SubSheet({ outId, onClose, color }: Props) {
+export function SubSheet({ outId, slot, onClose, color }: Props) {
   const match = useMatch((s) => s.match);
   const queueSub = useMatch((s) => s.queueSub);
+  const bringOnAt = useMatch((s) => s.bringOnAt);
   const giveCard = useMatch((s) => s.giveCard);
   const clearCard = useMatch((s) => s.clearCard);
 
-  if (!match || !outId) return null;
-  const out = match.roster.find((p) => p.id === outId);
-  if (!out) return null;
+  if (!match) return null;
+  const out = outId ? match.roster.find((p) => p.id === outId) : null;
+  const bringingOn = !out && !!slot;
+  if (!out && !bringingOn) return null;
 
-  const outCard = match.cards[outId];
+  const outCard = out ? match.cards[out.id] : undefined;
 
-  // Anyone already tied to a queued sub, or sent off, is off the table.
+  // Anyone scratched, sent off, or already tied to a queued sub is off the table.
   const queued = new Set(match.queue.flatMap((q) => [q.in, q.out]));
-
   const bench = match.roster
     .filter(
       (p) =>
@@ -44,19 +48,22 @@ export function SubSheet({ outId, onClose, color }: Props) {
 
   const pick = (inId: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    queueSub(outId, inId);
+    if (bringingOn && slot) bringOnAt(inId, slot.x, slot.y);
+    else if (out) queueSub(out.id, inId);
     onClose();
   };
 
   const toggleYellow = () => {
+    if (!out) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (outCard === 'yellow') clearCard(outId);
-    else giveCard(outId, 'yellow');
+    if (outCard === 'yellow') clearCard(out.id);
+    else giveCard(out.id, 'yellow');
   };
 
   const sendOff = () => {
+    if (!out) return;
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    giveCard(outId, 'red');
+    giveCard(out.id, 'red');
     onClose();
   };
 
@@ -64,38 +71,48 @@ export function SubSheet({ outId, onClose, color }: Props) {
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={styles.card}>
-        {/* Player coming off, up top. */}
         <View style={styles.head}>
-          <View style={[styles.badge, { backgroundColor: color }]}>
-            <Text style={styles.badgeText}>{badgeLabel(out)}</Text>
-          </View>
-          <View style={styles.headMain}>
-            <Text style={styles.title} numberOfLines={1}>
-              {out.name}
-            </Text>
-            <Text style={styles.sub}>comes off · tap who comes on</Text>
-          </View>
+          {out ? (
+            <>
+              <View style={[styles.badge, { backgroundColor: color }]}>
+                <Text style={styles.badgeText}>{badgeLabel(out)}</Text>
+              </View>
+              <View style={styles.headMain}>
+                <Text style={styles.title} numberOfLines={1}>
+                  {out.name}
+                </Text>
+                <Text style={styles.sub}>comes off · tap who comes on</Text>
+              </View>
+            </>
+          ) : (
+            <View style={styles.headMain}>
+              <Text style={styles.title}>Bring on</Text>
+              <Text style={styles.sub}>Tap who takes the open spot</Text>
+            </View>
+          )}
           <Pressable onPress={onClose} hitSlop={10}>
             <Text style={styles.close}>✕</Text>
           </Pressable>
         </View>
 
-        {/* Bookings for the tapped player. */}
-        <View style={styles.cardRow}>
-          <Pressable
-            style={[styles.cardBtn, outCard === 'yellow' && styles.cardBtnOn]}
-            onPress={toggleYellow}
-          >
-            <View style={[styles.swatch, { backgroundColor: theme.ball }]} />
-            <Text style={styles.cardText}>
-              {outCard === 'yellow' ? 'Yellow ✓' : 'Yellow'}
-            </Text>
-          </Pressable>
-          <Pressable style={styles.cardBtn} onPress={sendOff}>
-            <View style={[styles.swatch, { backgroundColor: theme.danger }]} />
-            <Text style={styles.cardText}>Red</Text>
-          </Pressable>
-        </View>
+        {/* Bookings, only when subbing a specific player off. */}
+        {out && (
+          <View style={styles.cardRow}>
+            <Pressable
+              style={[styles.cardBtn, outCard === 'yellow' && styles.cardBtnOn]}
+              onPress={toggleYellow}
+            >
+              <View style={[styles.swatch, { backgroundColor: theme.ball }]} />
+              <Text style={styles.cardText}>
+                {outCard === 'yellow' ? 'Yellow ✓' : 'Yellow'}
+              </Text>
+            </Pressable>
+            <Pressable style={styles.cardBtn} onPress={sendOff}>
+              <View style={[styles.swatch, { backgroundColor: theme.danger }]} />
+              <Text style={styles.cardText}>Red</Text>
+            </Pressable>
+          </View>
+        )}
 
         {bench.length === 0 ? (
           <Text style={styles.empty}>Nobody available on the bench.</Text>

@@ -97,6 +97,7 @@ type MatchStore = {
   swap: (outId: string, inId: string) => void;
   sendToBench: (id: string) => void;
   bringOn: (id: string) => void;
+  bringOnAt: (id: string, x: number, y: number) => void;
   queueSub: (outId: string, inId: string) => void;
   dropQueued: (index: number) => void;
   runQueued: (index: number) => void;
@@ -498,6 +499,22 @@ export const useMatch = create<MatchStore>((set, get) => {
           roster: benchLayout(
             m.roster.map((p) =>
               p.id === id ? { ...p, onField: true, x: free.x, y: free.y } : p
+            )
+          ),
+        };
+      });
+    },
+
+    /** Bring a bench player straight onto a specific open spot on the pitch. */
+    bringOnAt: (id, x, y) => {
+      patch((m) => {
+        const onFieldCount = m.roster.filter((p) => p.onField).length;
+        if (onFieldCount >= m.size) return m;
+        return {
+          ...m,
+          roster: benchLayout(
+            m.roster.map((p) =>
+              p.id === id ? { ...p, onField: true, x, y } : p
             )
           ),
         };

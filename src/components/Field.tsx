@@ -1,5 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import { Pitch } from './Pitch';
 import { PlayerDisc, DISC_R } from './PlayerDisc';
 import { OpponentMarker } from './OpponentMarker';
@@ -27,9 +33,11 @@ type Props = {
   color: string;
   trailsOn: boolean;
   onPlayerAction: (id: string) => void;
+  /** Tapping an open starter slot, in field coordinates. */
+  onEmptySlot: (x: number, y: number) => void;
 };
 
-export function Field({ color, trailsOn, onPlayerAction }: Props) {
+export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   const match = useMatch((s) => s.match);
   const movePlayer = useMatch((s) => s.movePlayer);
   const moveOpponent = useMatch((s) => s.moveOpponent);
@@ -127,7 +135,7 @@ export function Field({ color, trailsOn, onPlayerAction }: Props) {
             scaleY={scaleY}
           />
 
-          {/* Open starter slots, drawn under the players and non-interactive. */}
+          {/* Open starter slots — tap one to bring a player straight on. */}
           {emptySlots.map(({ s, i }) => (
             <EmptySlot
               key={`slot-${i}`}
@@ -137,6 +145,7 @@ export function Field({ color, trailsOn, onPlayerAction }: Props) {
               scaleX={scaleX}
               scaleY={scaleY}
               discScale={discScale}
+              onPress={() => onEmptySlot(s.x, s.y)}
             />
           ))}
 
@@ -179,7 +188,7 @@ export function Field({ color, trailsOn, onPlayerAction }: Props) {
   );
 }
 
-/** A dashed ghost disc marking an unfilled starter position. */
+/** A dashed ghost disc marking an unfilled starter position; tap to fill it. */
 function EmptySlot({
   x,
   y,
@@ -187,6 +196,7 @@ function EmptySlot({
   scaleX,
   scaleY,
   discScale,
+  onPress,
 }: {
   x: number;
   y: number;
@@ -194,45 +204,59 @@ function EmptySlot({
   scaleX: number;
   scaleY: number;
   discScale: number;
+  onPress: () => void;
 }) {
-  const size = DISC_R * 2 * discScale;
-  const half = DISC_R * discScale;
+  // Touch target matches a player disc's padded box so it's easy to hit.
+  const size = (DISC_R + 14) * 2 * discScale;
+  const half = size / 2;
+  const inner = DISC_R * 2 * discScale;
   return (
-    <View
-      pointerEvents="none"
-      style={[
-        styles.slot,
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.slotTouch,
         {
           width: size,
           height: size,
-          borderRadius: size / 2,
           transform: [
             { translateX: x * scaleX - half },
             { translateY: y * scaleY - half },
           ],
+          opacity: pressed ? 0.6 : 1,
         },
       ]}
     >
-      <Text style={[styles.slotText, { fontSize: Math.max(9, 12 * discScale) }]}>
-        {label}
-      </Text>
-    </View>
+      <View
+        style={[
+          styles.slot,
+          { width: inner, height: inner, borderRadius: inner / 2 },
+        ]}
+      >
+        <Text style={[styles.slotText, { fontSize: Math.max(9, 12 * discScale) }]}>
+          {label}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  slot: {
+  slotTouch: {
     position: 'absolute',
     left: 0,
     top: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  slot: {
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: rgba('#ffffff', 0.32),
     backgroundColor: rgba('#ffffff', 0.05),
-    zIndex: 1,
   },
   slotText: {
     color: rgba('#ffffff', 0.62),

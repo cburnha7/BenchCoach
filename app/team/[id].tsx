@@ -63,6 +63,9 @@ export default function TeamScreen() {
   const [rosterOpen, setRosterOpen] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   const [actionFor, setActionFor] = useState<string | null>(null);
+  const [bringOnSlot, setBringOnSlot] = useState<{ x: number; y: number } | null>(
+    null
+  );
   const [goalOpen, setGoalOpen] = useState(false);
   const [goalLogOpen, setGoalLogOpen] = useState(false);
   const [gameOpen, setGameOpen] = useState(false);
@@ -194,9 +197,8 @@ export default function TeamScreen() {
           {subsButton(styles.btnWide)}
         </View>
       ) : (
-        /* Phone: clock and the scoreboard ride above the pitch. */
+        /* Phone: scoreboard on top, then the clock, above the pitch. */
         <>
-          <ClockBar />
           {ready && (
             <ScoreBoard
               color={color}
@@ -205,10 +207,16 @@ export default function TeamScreen() {
               onOpenOverview={() => setGameOpen(true)}
             />
           )}
+          <ClockBar />
         </>
       )}
 
-      <Field color={color} trailsOn={trailsOn} onPlayerAction={setActionFor} />
+      <Field
+        color={color}
+        trailsOn={trailsOn}
+        onPlayerAction={setActionFor}
+        onEmptySlot={(x, y) => setBringOnSlot({ x, y })}
+      />
 
       {!wide && (
         /* Phone: formation/gear/reset, then roster/subs, sit below the pitch. */
@@ -245,7 +253,11 @@ export default function TeamScreen() {
       />
       <SubSheet
         outId={actionFor}
-        onClose={() => setActionFor(null)}
+        slot={bringOnSlot}
+        onClose={() => {
+          setActionFor(null);
+          setBringOnSlot(null);
+        }}
         color={color}
       />
       <GoalSheet
