@@ -159,8 +159,16 @@ export default function TeamScreen() {
     <View style={styles.screen}>
       <MatchBackdrop />
       {/* Back label defaults to the previous screen's title ("Bench Coach"),
-          which competed with the team name. Force the short, quiet "Back". */}
-      <Stack.Screen options={{ title: team.name, headerBackTitle: 'Back' }} />
+          which competed with the team name. Force the short, quiet "Back".
+          gestureEnabled off so the swipe-from-edge back gesture stops
+          hijacking player drags near the left edge — use the Back button. */}
+      <Stack.Screen
+        options={{
+          title: team.name,
+          headerBackTitle: 'Back',
+          gestureEnabled: false,
+        }}
+      />
 
       {wide ? (
         /* Tablet: clock, scoreboard, formation, gear, reset and actions all
