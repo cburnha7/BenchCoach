@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  FlatList,
   Modal,
   Pressable,
   StyleSheet,
@@ -12,6 +11,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StadiumBackdrop } from '../src/components/StadiumBackdrop';
+import { DraggableTeamList } from '../src/components/DraggableTeamList';
 import { useTeams } from '../src/store/useTeams';
 import {
   DEFAULT_COLOR,
@@ -33,6 +33,7 @@ export default function Home() {
   const hydrate = useTeams((s) => s.hydrate);
   const addTeam = useTeams((s) => s.addTeam);
   const updateTeam = useTeams((s) => s.updateTeam);
+  const reorder = useTeams((s) => s.reorder);
 
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -145,28 +146,29 @@ export default function Home() {
         }}
       />
 
-      <FlatList
-        data={teams}
-        keyExtractor={(t) => t.id}
-        renderItem={renderTeam}
-        contentContainerStyle={[
-          styles.list,
-          // Transparent header means content starts at the top of the screen,
-          // so the first card has to clear it manually.
-          { paddingTop: insets.top + 52 },
-        ]}
-        ListEmptyComponent={
-          hydrated ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>Add your first team</Text>
-              <Text style={styles.emptyBody}>
-                Track lineups, minutes and subs from the sideline. Everything
-                stays on this device.
-              </Text>
-            </View>
-          ) : null
-        }
-      />
+      {teams.length === 0 ? (
+        hydrated ? (
+          // Transparent header means content starts at the very top.
+          <View style={[styles.empty, { paddingTop: insets.top + 90 }]}>
+            <Text style={styles.emptyTitle}>Add your first team</Text>
+            <Text style={styles.emptyBody}>
+              Track lineups, minutes and subs from the sideline. Everything
+              stays on this device.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.fill} />
+        )
+      ) : (
+        <DraggableTeamList
+          teams={teams}
+          editing={editing}
+          onReorder={reorder}
+          renderItem={(t) => renderTeam({ item: t })}
+          paddingTop={insets.top + 52}
+          paddingBottom={16}
+        />
+      )}
 
       <Pressable
         style={[styles.addTeam, { marginBottom: insets.bottom + 12 }]}
@@ -258,7 +260,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.text,
   },
   editPillText: { color: theme.bg, fontWeight: '800', fontSize: 13 },
-  list: { paddingHorizontal: 16, paddingBottom: 16, gap: 11 },
+  fill: { flex: 1 },
   teamCard: {
     height: 88,
     borderRadius: radius.lg,
