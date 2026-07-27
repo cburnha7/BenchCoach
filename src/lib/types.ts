@@ -66,11 +66,18 @@ export type Ghost = {
  * Everything about one team's current match.
  * `minutes` accumulates seconds per player while the clock runs.
  */
+/** Per-player season tally. `g` goals, `a` assists. */
+export type PlayerStat = { g: number; a: number };
+
 export type MatchState = {
   teamId: string;
   size: TeamSize;
   roster: Player[];
   minutes: Record<string, number>;
+  /** Current game score. `us` is this team, `them` the opponent. */
+  score: { us: number; them: number };
+  /** Season goal/assist tallies per player id, cleared with a season reset. */
+  stats: Record<string, PlayerStat>;
   scratched: string[];
   queue: QueuedSub[];
   formationIdx: number;

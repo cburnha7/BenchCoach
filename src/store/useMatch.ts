@@ -26,6 +26,8 @@ function emptyMatch(teamId: string, size: TeamSize): MatchState {
     size,
     roster: [],
     minutes: {},
+    score: { us: 0, them: 0 },
+    stats: {},
     scratched: [],
     queue: [],
     formationIdx: 0,
@@ -74,6 +76,11 @@ type MatchStore = {
   setJersey: (id: string, jersey: string | undefined) => void;
   setEmoji: (id: string, emoji: string | undefined) => void;
   toggleScratch: (id: string) => void;
+
+  bumpScore: (team: 'us' | 'them', delta: number) => void;
+  recordGoal: (scorerId: string, assistId: string | null) => void;
+  resetScore: () => void;
+  resetStats: () => void;
 
   movePlayer: (id: string, x: number, y: number) => void;
   setFormation: (idx: number) => void;
@@ -263,10 +270,13 @@ export const useMatch = create<MatchStore>((set, get) => {
       patch((m) => {
         const minutes = { ...m.minutes };
         delete minutes[id];
+        const stats = { ...m.stats };
+        delete stats[id];
         return {
           ...m,
           roster: benchLayout(m.roster.filter((p) => p.id !== id)),
           minutes,
+          stats,
           scratched: m.scratched.filter((s) => s !== id),
           queue: m.queue.filter((q) => q.out !== id && q.in !== id),
         };
@@ -310,6 +320,34 @@ export const useMatch = create<MatchStore>((set, get) => {
           ? m.scratched.filter((s) => s !== id)
           : [...m.scratched, id],
       }));
+    },
+
+    bumpScore: (team, delta) => {
+      patch((m) => ({
+        ...m,
+        score: { ...m.score, [team]: Math.max(0, m.score[team] + delta) },
+      }));
+    },
+
+    recordGoal: (scorerId, assistId) => {
+      patch((m) => {
+        const stats = { ...m.stats };
+        const s = stats[scorerId] ?? { g: 0, a: 0 };
+        stats[scorerId] = { g: s.g + 1, a: s.a };
+        if (assistId && assistId !== scorerId) {
+          const a = stats[assistId] ?? { g: 0, a: 0 };
+          stats[assistId] = { g: a.g, a: a.a + 1 };
+        }
+        return { ...m, score: { ...m.score, us: m.score.us + 1 }, stats };
+      });
+    },
+
+    resetScore: () => {
+      patch((m) => ({ ...m, score: { us: 0, them: 0 } }));
+    },
+
+    resetStats: () => {
+      patch((m) => ({ ...m, stats: {} }));
     },
 
     movePlayer: (id, x, y) => {

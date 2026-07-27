@@ -13,6 +13,8 @@ import { Field } from '../../src/components/Field';
 import { ClockBar } from '../../src/components/ClockBar';
 import { FormationPicker } from '../../src/components/FormationPicker';
 import { BoardSettings } from '../../src/components/BoardSettings';
+import { ScoreBoard } from '../../src/components/ScoreBoard';
+import { GoalSheet } from '../../src/components/GoalSheet';
 import { RosterSheet } from '../../src/components/RosterSheet';
 import { SubSheet } from '../../src/components/SubSheet';
 import { BadgeSheet } from '../../src/components/BadgeSheet';
@@ -59,6 +61,7 @@ export default function TeamScreen() {
   const [boardOpen, setBoardOpen] = useState(false);
   const [actionFor, setActionFor] = useState<string | null>(null);
   const [badgeFor, setBadgeFor] = useState<string | null>(null);
+  const [goalOpen, setGoalOpen] = useState(false);
   const [trailsOn, setTrailsOn] = useState(false);
 
   useEffect(() => {
@@ -169,6 +172,8 @@ export default function TeamScreen() {
 
       <Field color={color} trailsOn={trailsOn} onPlayerAction={setActionFor} />
 
+      {ready && <ScoreBoard color={color} onAddUs={() => setGoalOpen(true)} />}
+
       {!wide && (
         <View
           style={[styles.footer, styles.footerRow, { paddingBottom: insets.bottom + 8 }]}
@@ -228,7 +233,6 @@ export default function TeamScreen() {
         onClose={() => setRosterOpen(false)}
         teamName={team.name}
         color={color}
-        onEditBadge={(pid) => setBadgeFor(pid)}
       />
       <SubSheet
         outId={actionFor}
@@ -239,6 +243,11 @@ export default function TeamScreen() {
         }}
       />
       <BadgeSheet playerId={badgeFor} onClose={() => setBadgeFor(null)} />
+      <GoalSheet
+        visible={goalOpen}
+        onClose={() => setGoalOpen(false)}
+        color={color}
+      />
     </View>
   );
 }

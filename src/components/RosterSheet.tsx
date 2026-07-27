@@ -22,6 +22,8 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScanSheet } from './ScanSheet';
+import { BadgeSheet } from './BadgeSheet';
+import { StatsSheet } from './StatsSheet';
 import { useMatch } from '../store/useMatch';
 import { badgeLabel, formatClock, type Player } from '../lib/types';
 import { theme, radius, mix } from '../lib/theme';
@@ -31,7 +33,6 @@ type Props = {
   onClose: () => void;
   teamName: string;
   color: string;
-  onEditBadge: (playerId: string) => void;
 };
 
 // How far a row must travel before the swipe commits, and how far it can go.
@@ -44,13 +45,7 @@ const SWIPE_MAX = 128;
  * The list is read-only until you tap Edit; the only per-row gesture is a
  * swipe: left to scratch, right to restore.
  */
-export function RosterSheet({
-  visible,
-  onClose,
-  teamName,
-  color,
-  onEditBadge,
-}: Props) {
+export function RosterSheet({ visible, onClose, teamName, color }: Props) {
   const insets = useSafeAreaInsets();
   const match = useMatch((s) => s.match);
   // Subscribing to tickCount keeps the minutes live while the clock runs.
@@ -62,6 +57,10 @@ export function RosterSheet({
   const [name, setName] = useState('');
   const [scanning, setScanning] = useState(false);
   const [editing, setEditing] = useState(false);
+  // Badge editing renders inside this sheet's modal — a modal presented from
+  // the app screen behind this one is silently dropped by iOS.
+  const [badgeFor, setBadgeFor] = useState<string | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   if (!match) return null;
 
@@ -104,7 +103,7 @@ export function RosterSheet({
         scratched={isScratched}
         editing={editing}
         topGap={topGap}
-        onEditBadge={onEditBadge}
+        onEditBadge={setBadgeFor}
         onRemove={removePlayer}
         onToggleScratch={toggleScratch}
       />
@@ -131,9 +130,16 @@ export function RosterSheet({
             </Text>
           </View>
           <Pressable
+            onPress={() => setStatsOpen(true)}
+            hitSlop={10}
+            style={styles.editBtn}
+          >
+            <Text style={styles.editText}>Stats</Text>
+          </Pressable>
+          <Pressable
             onPress={() => setEditing((e) => !e)}
             hitSlop={10}
-            style={[styles.editBtn, editing && styles.editBtnOn]}
+            style={[styles.editBtn, styles.editBtnGap, editing && styles.editBtnOn]}
           >
             <Text style={[styles.editText, editing && styles.editTextOn]}>
               {editing ? 'Done' : 'Edit'}
@@ -208,6 +214,14 @@ export function RosterSheet({
           visible={scanning}
           onClose={() => setScanning(false)}
           onImport={(found) => found.forEach((n) => addPlayer(n))}
+        />
+
+        <BadgeSheet playerId={badgeFor} onClose={() => setBadgeFor(null)} />
+
+        <StatsSheet
+          visible={statsOpen}
+          onClose={() => setStatsOpen(false)}
+          color={color}
         />
       </GestureHandlerRootView>
     </Modal>
@@ -370,6 +384,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.controlBorder,
   },
+  editBtnGap: { marginLeft: 8 },
   editBtnOn: { backgroundColor: theme.text, borderColor: theme.text },
   editText: { color: theme.text, fontWeight: '700', fontSize: 14 },
   editTextOn: { color: theme.bg },
