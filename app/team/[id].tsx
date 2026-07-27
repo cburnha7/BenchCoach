@@ -261,6 +261,7 @@ export default function TeamScreen() {
       <GameSheet
         visible={gameOpen}
         onClose={() => setGameOpen(false)}
+        teamName={team.name}
         color={color}
       />
     </View>

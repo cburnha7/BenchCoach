@@ -10,21 +10,22 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMatch } from '../store/useMatch';
-import { firstName } from '../lib/types';
 import { theme, radius } from '../lib/theme';
 
 type Props = {
   visible: boolean;
   onClose: () => void;
+  teamName: string;
   color: string;
 };
 
 /**
- * Game overview: the score, this game's goals and assists, the bookings, and a
- * single Reset that starts a fresh game — clearing the score, goals, cards and
- * every player's minutes in one go.
+ * Game overview as a box score: the two sides and the score up top, then the
+ * goals and cards listed one per line beneath each side. We only attribute our
+ * own goals, so the Them column shows its goals as plain markers. One Reset
+ * starts a fresh game — score, goals, cards and minutes all cleared.
  */
-export function GameSheet({ visible, onClose, color }: Props) {
+export function GameSheet({ visible, onClose, teamName, color }: Props) {
   const insets = useSafeAreaInsets();
   const match = useMatch((s) => s.match);
   const resetScore = useMatch((s) => s.resetScore);
@@ -32,14 +33,35 @@ export function GameSheet({ visible, onClose, color }: Props) {
 
   if (!match) return null;
 
-  const nameOf = (id: string | null) => {
+  const name = (id: string | null) => {
     if (!id) return null;
-    const p = match.roster.find((r) => r.id === id);
-    return p ? firstName(p.name) : 'Unknown';
+    return match.roster.find((r) => r.id === id)?.name ?? 'Unknown';
   };
 
-  const goals = [...match.goals].reverse();
-  const carded = match.roster.filter((p) => match.cards[p.id]);
+  // Our events, one line each: goals (with assist) then bookings.
+  const usLines = [
+    ...match.goals.map((g) => ({
+      key: g.id,
+      icon: '⚽',
+      text: name(g.scorerId) ?? 'Goal',
+      meta: name(g.assistId) ? `assist · ${name(g.assistId)}` : null,
+    })),
+    ...match.roster
+      .filter((p) => match.cards[p.id])
+      .map((p) => ({
+        key: `card-${p.id}`,
+        icon: match.cards[p.id] === 'red' ? '🟥' : '🟨',
+        text: p.name,
+        meta: null as string | null,
+      })),
+  ];
+
+  // Them goals are unattributed, so just a marker per goal.
+  const themLines = Array.from({ length: match.score.them }, (_, i) => ({
+    key: `them-${i}`,
+    icon: '⚽',
+    text: 'Goal',
+  }));
 
   const confirmReset = () => {
     Alert.alert(
@@ -63,70 +85,67 @@ export function GameSheet({ visible, onClose, color }: Props) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={styles.sheet}>
-        <View style={styles.header}>
-          <View style={styles.headerMain}>
-            <Text style={styles.title}>Game</Text>
-            <Text style={styles.scoreLine}>
-              Them {match.score.them}
-              <Text style={styles.dash}> – </Text>
-              <Text style={{ color }}>{match.score.us}</Text> Us
-            </Text>
-          </View>
+        <View style={styles.topBar}>
+          <Text style={styles.heading}>Game</Text>
           <Pressable onPress={onClose} hitSlop={10}>
             <Text style={styles.close}>Done</Text>
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}>
-          <Text style={styles.section}>Goals</Text>
-          {goals.length === 0 ? (
-            <Text style={styles.empty}>No goals yet.</Text>
-          ) : (
-            goals.map((g, i) => {
-              const scorer = nameOf(g.scorerId);
-              const assist = nameOf(g.assistId);
-              return (
-                <View key={g.id} style={styles.row}>
-                  <View style={[styles.num, { backgroundColor: color }]}>
-                    <Text style={styles.numText}>{goals.length - i}</Text>
-                  </View>
-                  <Text style={styles.rowName} numberOfLines={1}>
-                    {scorer ?? 'Unattributed'}
-                  </Text>
-                  {assist ? (
-                    <Text style={styles.rowMeta} numberOfLines={1}>
-                      assist · {assist}
-                    </Text>
-                  ) : null}
-                </View>
-              );
-            })
-          )}
+        {/* Score line, box-score style. */}
+        <View style={styles.scoreRow}>
+          <Text style={styles.teamName} numberOfLines={1}>
+            Them
+          </Text>
+          <Text style={styles.scoreNum}>{match.score.them}</Text>
+          <Text style={styles.dash}>–</Text>
+          <Text style={[styles.scoreNum, { color }]}>{match.score.us}</Text>
+          <Text style={[styles.teamName, styles.teamNameRight]} numberOfLines={1}>
+            {teamName}
+          </Text>
+        </View>
 
-          <Text style={[styles.section, styles.sectionGap]}>Cards</Text>
-          {carded.length === 0 ? (
-            <Text style={styles.empty}>No cards.</Text>
-          ) : (
-            carded.map((p) => (
-              <View key={p.id} style={styles.row}>
-                <View
-                  style={[
-                    styles.cardSwatch,
-                    {
-                      backgroundColor:
-                        match.cards[p.id] === 'red' ? theme.danger : theme.ball,
-                    },
-                  ]}
-                />
-                <Text style={styles.rowName} numberOfLines={1}>
-                  {p.name}
-                </Text>
-                <Text style={styles.rowMeta}>
-                  {match.cards[p.id] === 'red' ? 'sent off' : 'booked'}
-                </Text>
-              </View>
-            ))
-          )}
+        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}>
+          <View style={styles.columns}>
+            <View style={styles.col}>
+              {themLines.length === 0 ? (
+                <Text style={styles.none}>—</Text>
+              ) : (
+                themLines.map((l) => (
+                  <View key={l.key} style={styles.line}>
+                    <Text style={styles.lineIcon}>{l.icon}</Text>
+                    <Text style={styles.lineText} numberOfLines={1}>
+                      {l.text}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+
+            <View style={styles.colDivider} />
+
+            <View style={styles.col}>
+              {usLines.length === 0 ? (
+                <Text style={styles.none}>—</Text>
+              ) : (
+                usLines.map((l) => (
+                  <View key={l.key} style={styles.line}>
+                    <Text style={styles.lineIcon}>{l.icon}</Text>
+                    <View style={styles.lineMain}>
+                      <Text style={styles.lineText} numberOfLines={1}>
+                        {l.text}
+                      </Text>
+                      {l.meta ? (
+                        <Text style={styles.lineMeta} numberOfLines={1}>
+                          {l.meta}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
+          </View>
         </ScrollView>
 
         <Pressable
@@ -142,55 +161,43 @@ export function GameSheet({ visible, onClose, color }: Props) {
 
 const styles = StyleSheet.create({
   sheet: { flex: 1, backgroundColor: theme.bg },
-  header: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 10,
+    paddingTop: 16,
   },
-  headerMain: { flex: 1 },
-  title: { color: theme.text, fontSize: 24, fontWeight: '800', letterSpacing: -0.3 },
-  scoreLine: {
-    color: theme.text,
-    fontSize: 15,
-    fontWeight: '700',
-    marginTop: 4,
-    fontVariant: ['tabular-nums'],
-  },
-  dash: { color: theme.textDim },
+  heading: { color: theme.textDim, fontSize: 13, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
   close: { color: theme.text, fontSize: 16, fontWeight: '700' },
-  section: {
-    color: theme.textDim,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    paddingHorizontal: 18,
-    marginBottom: 6,
-  },
-  sectionGap: { marginTop: 20 },
-  empty: { color: theme.textDim, fontSize: 14, paddingHorizontal: 18, paddingVertical: 10 },
-  row: {
+  scoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
+    paddingVertical: 14,
     paddingHorizontal: 18,
-    paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.border,
   },
-  num: {
-    width: 26,
-    height: 26,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
+  teamName: { flex: 1, color: theme.text, fontSize: 16, fontWeight: '700', textAlign: 'right' },
+  teamNameRight: { textAlign: 'left' },
+  scoreNum: {
+    color: theme.text,
+    fontSize: 40,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
   },
-  numText: { color: theme.onAccent, fontWeight: '800', fontSize: 12 },
-  cardSwatch: { width: 16, height: 22, borderRadius: 3, borderWidth: 1, borderColor: 'rgba(0,0,0,0.3)' },
-  rowName: { flex: 1, color: theme.text, fontSize: 16, fontWeight: '600' },
-  rowMeta: { color: theme.textDim, fontSize: 13 },
+  dash: { color: theme.textDim, fontSize: 26, fontWeight: '700' },
+  columns: { flexDirection: 'row', paddingTop: 14 },
+  col: { flex: 1, paddingHorizontal: 16, gap: 12 },
+  colDivider: { width: StyleSheet.hairlineWidth, backgroundColor: theme.border },
+  none: { color: theme.textDim, fontSize: 15 },
+  line: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  lineIcon: { fontSize: 15 },
+  lineMain: { flex: 1 },
+  lineText: { color: theme.text, fontSize: 15.5, fontWeight: '600' },
+  lineMeta: { color: theme.textDim, fontSize: 12, marginTop: 1 },
   reset: {
     position: 'absolute',
     left: 16,
