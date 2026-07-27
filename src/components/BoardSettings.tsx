@@ -23,13 +23,8 @@ export function BoardSettings({
   const match = useMatch((s) => s.match);
   const toggleOpponent = useMatch((s) => s.toggleOpponent);
   const resetOpponent = useMatch((s) => s.resetOpponent);
-  const clearBoard = useMatch((s) => s.clearBoard);
-  const applyFormation = useMatch((s) => s.applyFormation);
 
   if (!match) return null;
-
-  const marks =
-    match.arrows.length + match.ghosts.length + (match.holder ? 1 : 0);
 
   return (
     <Modal
@@ -79,29 +74,6 @@ export function BoardSettings({
           />
         </View>
 
-        <Pressable
-          style={styles.action}
-          onPress={() => {
-            applyFormation();
-            onClose();
-          }}
-        >
-          <Text style={styles.actionText}>Reset positions to formation</Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.action, marks > 0 && styles.actionAlert]}
-          onPress={() => {
-            clearBoard();
-            onClose();
-          }}
-          disabled={marks === 0}
-        >
-          <Text style={[styles.actionText, marks === 0 && styles.dim]}>
-            {marks > 0 ? 'Clear passes and trails' : 'Board is clear'}
-          </Text>
-        </Pressable>
-
         <View style={styles.legend}>
           <Text style={styles.legendTitle}>Controls</Text>
           <Text style={styles.legendRow}>
@@ -109,7 +81,7 @@ export function BoardSettings({
             pass to them
           </Text>
           <Text style={styles.legendRow}>
-            <Text style={styles.legendKey}>Tap</Text>  Sub
+            <Text style={styles.legendKey}>Tap</Text>  sub
           </Text>
           <Text style={styles.legendRow}>
             <Text style={styles.legendKey}>Hold and drag</Text>  move a player
@@ -162,9 +134,7 @@ const styles = StyleSheet.create({
     borderColor: theme.controlBorder,
     alignItems: 'center',
   },
-  actionAlert: { backgroundColor: theme.queued },
   actionText: { color: theme.text, fontWeight: '700', fontSize: 15 },
-  dim: { color: theme.textDim },
   legend: {
     marginTop: 16,
     padding: 14,

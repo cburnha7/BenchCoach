@@ -45,6 +45,15 @@ export default function TeamScreen() {
   const unload = useMatch((s) => s.unload);
   const setFormation = useMatch((s) => s.setFormation);
   const runAllQueued = useMatch((s) => s.runAllQueued);
+  const applyFormation = useMatch((s) => s.applyFormation);
+  const clearBoard = useMatch((s) => s.clearBoard);
+
+  // Reset the board: everyone back to their formation slot, and wipe the
+  // passes and run trails drawn on top.
+  const resetField = () => {
+    applyFormation();
+    clearBoard();
+  };
 
   const [rosterOpen, setRosterOpen] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
@@ -129,6 +138,16 @@ export default function TeamScreen() {
               style={({ pressed }) => [
                 styles.btn,
                 styles.btnWide,
+                pressed && styles.pressed,
+              ]}
+              onPress={resetField}
+            >
+              <Text style={styles.btnText}>Reset</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.btn,
+                styles.btnWide,
                 queued > 0 ? styles.btnAlert : styles.btnOff,
                 pressed && styles.pressed,
               ]}
@@ -151,11 +170,13 @@ export default function TeamScreen() {
       <Field color={color} trailsOn={trailsOn} onPlayerAction={setActionFor} />
 
       {!wide && (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
+        <View
+          style={[styles.footer, styles.footerRow, { paddingBottom: insets.bottom + 8 }]}
+        >
           <Pressable
             style={({ pressed }) => [
               styles.btn,
-              styles.btnStacked,
+              styles.footerBtn,
               pressed && styles.pressed,
             ]}
             onPress={() => setRosterOpen(true)}
@@ -166,6 +187,18 @@ export default function TeamScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.btn,
+              styles.footerBtn,
+              pressed && styles.pressed,
+            ]}
+            onPress={resetField}
+          >
+            <Text style={styles.btnText}>Reset</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.btn,
+              styles.footerBtn,
               queued > 0 ? styles.btnAlert : styles.btnOff,
               pressed && styles.pressed,
             ]}
@@ -178,9 +211,7 @@ export default function TeamScreen() {
                 queued > 0 ? styles.btnTextAlert : styles.btnTextOff,
               ]}
             >
-              {queued > 0
-                ? `Run ${queued} sub${queued > 1 ? 's' : ''}`
-                : 'No subs queued'}
+              {queued > 0 ? `Run ${queued}` : 'No subs'}
             </Text>
           </Pressable>
         </View>
@@ -256,6 +287,8 @@ const styles = StyleSheet.create({
   gearIcon: { color: theme.textDim, fontSize: 22 },
   gearIconOn: { color: theme.bg },
   footer: { paddingHorizontal: 12, paddingTop: 6 },
+  footerRow: { flexDirection: 'row', gap: 8 },
+  footerBtn: { flex: 1 },
   /**
    * Shorter than before — 44pt tall, which is Apple's minimum target and no
    * more. Every point saved here goes straight to the field.
@@ -275,7 +308,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     elevation: 5,
   },
-  btnStacked: { marginBottom: 6 },
   /** Pushes the action buttons to the trailing edge of the wide bar. */
   spacer: { flex: 1 },
   /** On a wide screen these sit inline, so they size to their content. */

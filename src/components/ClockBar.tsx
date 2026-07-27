@@ -84,6 +84,14 @@ export function ClockBar({ inline = false }: Props) {
       </Pressable>
 
       <Pressable
+        style={({ pressed }) => [styles.resetBtn, pressed && styles.pressed]}
+        onPress={resetClock}
+        hitSlop={8}
+      >
+        <Text style={styles.resetIcon}>↺</Text>
+      </Pressable>
+
+      <Pressable
         style={({ pressed }) => [
           styles.startBtn,
           running ? styles.stopBtn : styles.goBtn,
@@ -157,4 +165,15 @@ const styles = StyleSheet.create({
   goBtn: { backgroundColor: theme.live },
   stopBtn: { backgroundColor: theme.danger },
   startText: { color: theme.onAccent, fontWeight: '800', fontSize: 15 },
+  resetBtn: {
+    width: CONTROL_H,
+    height: CONTROL_H,
+    borderRadius: radius.md,
+    backgroundColor: theme.control,
+    borderWidth: 1,
+    borderColor: theme.controlBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resetIcon: { color: theme.text, fontSize: 22, fontWeight: '700', lineHeight: 24 },
 });
