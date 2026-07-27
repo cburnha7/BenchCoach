@@ -105,11 +105,13 @@ export function FormationPicker({
 
 const styles = StyleSheet.create({
   trigger: {
-    flex: 1,
+    // Sized to content (wide enough for the longest shape name) rather than
+    // flexing, so there's room for the Reset button beside the gear.
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    minWidth: 138,
     // Matches the step buttons and the gear so the row reads as one band.
     height: CONTROL_H,
     borderRadius: radius.md,
@@ -122,14 +124,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     elevation: 4,
   },
-  triggerInline: { flex: 0, minWidth: 132 },
+  triggerInline: { minWidth: 128 },
   pressed: { opacity: 0.85 },
   current: {
     color: theme.text,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
-  caret: { color: theme.textDim, fontSize: 18, marginTop: -3, marginLeft: 10 },
+  caret: { color: theme.textDim, fontSize: 17, marginTop: -3, marginLeft: 8 },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: theme.scrim },
   sheet: {
     position: 'absolute',

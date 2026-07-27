@@ -2,42 +2,40 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useMatch } from '../store/useMatch';
-import { formatClock, firstName } from '../lib/types';
+import { badgeLabel } from '../lib/types';
 import { theme, radius, glass } from '../lib/theme';
 
 type Props = {
-  /** Player the sheet is about, or null when closed. */
+  /** On-field player being subbed off, or null when closed. */
   outId: string | null;
   onClose: () => void;
-  /** Hand off to the badge editor for this player. */
-  onEditBadge: (playerId: string) => void;
+  color: string;
 };
 
-export function SubSheet({ outId, onClose, onEditBadge }: Props) {
+/**
+ * Tap an on-field player to sub them off. This sheet is just the bench, least
+ * playing time first, minus anyone already in a queued sub. Tapping a name
+ * queues the swap — it isn't made until the Subs button on the field is hit.
+ */
+export function SubSheet({ outId, onClose, color }: Props) {
   const match = useMatch((s) => s.match);
-  const swap = useMatch((s) => s.swap);
   const queueSub = useMatch((s) => s.queueSub);
-  const toggleScratch = useMatch((s) => s.toggleScratch);
-  const sendToBench = useMatch((s) => s.sendToBench);
-  const bringOn = useMatch((s) => s.bringOn);
 
   if (!match || !outId) return null;
   const out = match.roster.find((p) => p.id === outId);
   if (!out) return null;
 
-  // Least playing time first — who most needs a run — but the minutes stay
-  // hidden here; the coach just wants the order.
+  // Anyone already tied to a queued sub is off the table.
+  const queued = new Set(match.queue.flatMap((q) => [q.in, q.out]));
+
   const bench = match.roster
-    .filter((p) => !p.onField && !match.scratched.includes(p.id))
+    .filter(
+      (p) =>
+        !p.onField && !match.scratched.includes(p.id) && !queued.has(p.id)
+    )
     .sort((a, b) => (match.minutes[a.id] ?? 0) - (match.minutes[b.id] ?? 0));
 
-  const doSwap = (inId: string) => {
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    swap(outId, inId);
-    onClose();
-  };
-
-  const doQueue = (inId: string) => {
+  const pick = (inId: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     queueSub(outId, inId);
     onClose();
@@ -47,84 +45,38 @@ export function SubSheet({ outId, onClose, onEditBadge }: Props) {
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={styles.card}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>{out.name}</Text>
-            <Text style={styles.sub}>
-              {out.onField ? 'On field' : 'On bench'} ·{' '}
-              {formatClock(match.minutes[out.id] ?? 0)}
+        {/* Player coming off, up top. */}
+        <View style={styles.head}>
+          <View style={[styles.badge, { backgroundColor: color }]}>
+            <Text style={styles.badgeText}>{badgeLabel(out)}</Text>
+          </View>
+          <View style={styles.headMain}>
+            <Text style={styles.title} numberOfLines={1}>
+              {out.name}
             </Text>
+            <Text style={styles.sub}>comes off · tap who comes on</Text>
           </View>
           <Pressable onPress={onClose} hitSlop={10}>
             <Text style={styles.close}>✕</Text>
           </Pressable>
         </View>
 
-        {out.onField ? (
-          <>
-            <Text style={styles.section}>Sub on for {firstName(out.name)}</Text>
-            <ScrollView style={styles.scroll}>
-              {bench.length === 0 && (
-                <Text style={styles.empty}>Nobody available on the bench.</Text>
-              )}
-              {bench.map((p) => (
-                <View key={p.id} style={styles.benchRow}>
-                  <View style={styles.benchMain}>
-                    <Text style={styles.benchName}>{p.name}</Text>
-                  </View>
-                  <Pressable style={styles.queueBtn} onPress={() => doQueue(p.id)}>
-                    <Text style={styles.queueText}>Queue</Text>
-                  </Pressable>
-                  <Pressable style={styles.nowBtn} onPress={() => doSwap(p.id)}>
-                    <Text style={styles.nowText}>Now</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </ScrollView>
-            <Pressable
-              style={styles.secondary}
-              onPress={() => {
-                sendToBench(outId);
-                onClose();
-              }}
-            >
-              <Text style={styles.secondaryText}>Send to bench</Text>
-            </Pressable>
-          </>
+        {bench.length === 0 ? (
+          <Text style={styles.empty}>Nobody available on the bench.</Text>
         ) : (
-          <>
-            <Text style={styles.empty}>
-              {firstName(out.name)} is on the bench.
-            </Text>
-            <Pressable
-              style={styles.primary}
-              onPress={() => {
-                bringOn(outId);
-                onClose();
-              }}
-            >
-              <Text style={styles.primaryText}>Bring on now</Text>
-            </Pressable>
-          </>
+          <ScrollView style={styles.scroll}>
+            {bench.map((p) => (
+              <Pressable key={p.id} style={styles.row} onPress={() => pick(p.id)}>
+                <View style={[styles.badgeSm, { backgroundColor: color }]}>
+                  <Text style={styles.badgeSmText}>{badgeLabel(p)}</Text>
+                </View>
+                <Text style={styles.name} numberOfLines={1}>
+                  {p.name}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
         )}
-
-        <Pressable style={styles.secondary} onPress={() => onEditBadge(outId)}>
-          <Text style={styles.secondaryText}>Number or icon</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.secondary}
-          onPress={() => {
-            toggleScratch(outId);
-            onClose();
-          }}
-        >
-          <Text style={styles.secondaryText}>
-            {match.scratched.includes(outId)
-              ? 'Un-scratch (minutes resume)'
-              : 'Scratch (stop counting minutes)'}
-          </Text>
-        </Pressable>
       </View>
     </Modal>
   );
@@ -137,71 +89,50 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     bottom: 24,
+    ...glass,
     backgroundColor: theme.surface,
     borderRadius: radius.xl,
     padding: 18,
     maxHeight: '78%',
-    borderWidth: 1,
-    borderColor: theme.border,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  title: { color: theme.text, fontSize: 20, fontWeight: '800' },
-  sub: { color: theme.textDim, fontSize: 13, marginTop: 2 },
-  close: { color: theme.textDim, fontSize: 18, paddingHorizontal: 4 },
-  section: {
-    color: theme.textDim,
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 8,
-  },
-  scroll: { maxHeight: 260 },
-  benchRow: {
+  head: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
+    gap: 12,
+    paddingBottom: 14,
+    marginBottom: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.border,
   },
-  benchMain: { flex: 1 },
-  benchName: { color: theme.text, fontSize: 16, fontWeight: '600' },
-  queueBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+  badge: {
+    width: 40,
+    height: 40,
     borderRadius: radius.pill,
-    backgroundColor: theme.control,
-  },
-  queueText: { color: theme.queued, fontWeight: '700', fontSize: 13 },
-  nowBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: radius.pill,
-    backgroundColor: theme.live,
-  },
-  nowText: { color: theme.onAccent, fontWeight: '700', fontSize: 13 },
-  primary: {
-    marginTop: 12,
-    paddingVertical: 13,
-    borderRadius: radius.md,
-    backgroundColor: theme.live,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  primaryText: { color: theme.onAccent, fontWeight: '700', fontSize: 15 },
-  secondary: {
-    marginTop: 10,
+  badgeText: { color: theme.onAccent, fontWeight: '800', fontSize: 16 },
+  headMain: { flex: 1 },
+  title: { color: theme.text, fontSize: 20, fontWeight: '800' },
+  sub: { color: theme.textDim, fontSize: 13, marginTop: 2 },
+  close: { color: theme.textDim, fontSize: 18, paddingHorizontal: 4 },
+  empty: { color: theme.textDim, textAlign: 'center', paddingVertical: 26, fontSize: 15 },
+  scroll: { maxHeight: 380 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     paddingVertical: 11,
-    borderRadius: radius.md,
-    backgroundColor: theme.control,
-    borderWidth: 1,
-    borderColor: theme.controlBorder,
-    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.border,
   },
-  secondaryText: { color: theme.text, fontWeight: '600', fontSize: 14 },
-  empty: { color: theme.textDim, textAlign: 'center', paddingVertical: 20 },
+  badgeSm: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeSmText: { color: theme.onAccent, fontWeight: '800', fontSize: 14 },
+  name: { flex: 1, color: theme.text, fontSize: 16, fontWeight: '600' },
 });

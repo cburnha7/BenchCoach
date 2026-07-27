@@ -18,7 +18,6 @@ import { GoalSheet } from '../../src/components/GoalSheet';
 import { GoalLogSheet } from '../../src/components/GoalLogSheet';
 import { RosterSheet } from '../../src/components/RosterSheet';
 import { SubSheet } from '../../src/components/SubSheet';
-import { BadgeSheet } from '../../src/components/BadgeSheet';
 import { useTeams } from '../../src/store/useTeams';
 import { useMatch, onFieldCount } from '../../src/store/useMatch';
 import { DEFAULT_COLOR } from '../../src/lib/types';
@@ -61,7 +60,6 @@ export default function TeamScreen() {
   const [rosterOpen, setRosterOpen] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   const [actionFor, setActionFor] = useState<string | null>(null);
-  const [badgeFor, setBadgeFor] = useState<string | null>(null);
   const [goalOpen, setGoalOpen] = useState(false);
   const [goalLogOpen, setGoalLogOpen] = useState(false);
   const [trailsOn, setTrailsOn] = useState(false);
@@ -112,6 +110,9 @@ export default function TeamScreen() {
             inline={wide}
           />
         )}
+
+        {!wide && <View style={styles.spacer} />}
+
         <Pressable
           style={({ pressed }) => [
             styles.gear,
@@ -123,6 +124,13 @@ export default function TeamScreen() {
           <Text style={[styles.gearIcon, boardActive && styles.gearIconOn]}>
             ⚙
           </Text>
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.btn, pressed && styles.pressed]}
+          onPress={resetField}
+        >
+          <Text style={styles.btnText}>Reset</Text>
         </Pressable>
 
         {wide && <View style={styles.spacer} />}
@@ -138,16 +146,6 @@ export default function TeamScreen() {
               onPress={() => setRosterOpen(true)}
             >
               <Text style={styles.btnText}>Roster</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.btn,
-                styles.btnWide,
-                pressed && styles.pressed,
-              ]}
-              onPress={resetField}
-            >
-              <Text style={styles.btnText}>Reset</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [
@@ -201,17 +199,6 @@ export default function TeamScreen() {
             style={({ pressed }) => [
               styles.btn,
               styles.footerBtn,
-              pressed && styles.pressed,
-            ]}
-            onPress={resetField}
-          >
-            <Text style={styles.btnText}>Reset</Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.btn,
-              styles.footerBtn,
               queued > 0 ? styles.btnAlert : styles.btnOff,
               pressed && styles.pressed,
             ]}
@@ -245,12 +232,8 @@ export default function TeamScreen() {
       <SubSheet
         outId={actionFor}
         onClose={() => setActionFor(null)}
-        onEditBadge={(pid) => {
-          setActionFor(null);
-          setBadgeFor(pid);
-        }}
+        color={color}
       />
-      <BadgeSheet playerId={badgeFor} onClose={() => setBadgeFor(null)} />
       <GoalSheet
         visible={goalOpen}
         onClose={() => setGoalOpen(false)}
