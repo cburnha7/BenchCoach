@@ -178,6 +178,9 @@ function PlayerDiscBase({
   }));
 
   const label = badgeLabel(player);
+  // An emoji badge is drawn big and bare — no coloured disc behind it. The
+  // possession ring still appears (it's a sibling) when they have the ball.
+  const isEmoji = !!player.emoji;
 
   return (
     <GestureDetector gesture={gesture}>
@@ -198,31 +201,52 @@ function PlayerDiscBase({
               ringStyle,
             ]}
           />
-          <View
-            style={[
-              styles.disc,
-              {
-                borderRadius: discSize / 2,
-                backgroundColor: scratched ? theme.surfaceAlt : color,
-                borderColor: queued ? theme.queued : rgba('#000000', 0.35),
-                borderWidth: queued ? 3 : 1.5,
-                opacity: scratched ? 0.45 : 1,
-              },
-            ]}
-          >
-            <Text
-              numberOfLines={1}
+          {isEmoji ? (
+            <View pointerEvents="none" style={styles.emojiWrap}>
+              <Text
+                style={[
+                  styles.emoji,
+                  {
+                    fontSize: Math.round(discSize * 1.3),
+                    opacity: scratched ? 0.45 : 1,
+                  },
+                ]}
+              >
+                {player.emoji}
+              </Text>
+            </View>
+          ) : (
+            <View
               style={[
-                styles.label,
+                styles.disc,
                 {
-                  color: scratched ? theme.textDim : contrastText(color),
-                  fontSize: Math.max(11, 17 * discScale),
+                  borderRadius: discSize / 2,
+                  backgroundColor: scratched ? theme.surfaceAlt : color,
+                  borderColor: queued ? theme.queued : rgba('#000000', 0.35),
+                  borderWidth: queued ? 3 : 1.5,
+                  opacity: scratched ? 0.45 : 1,
                 },
               ]}
             >
-              {label}
-            </Text>
-          </View>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.label,
+                  {
+                    color: scratched ? theme.textDim : contrastText(color),
+                    fontSize: Math.max(11, 17 * discScale),
+                  },
+                ]}
+              >
+                {label}
+              </Text>
+            </View>
+          )}
+
+          {/* A queued sub still needs a hint when there's no disc to tint. */}
+          {isEmoji && queued && (
+            <View pointerEvents="none" style={styles.queuedDot} />
+          )}
 
           {/* Booking flag, clipped to the top-right of the disc. */}
           {card && (
@@ -266,6 +290,29 @@ const styles = StyleSheet.create({
   label: {
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  emojiWrap: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emoji: {
+    textAlign: 'center',
+    // A soft shadow keeps the glyph legible over the bright pitch.
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  queuedDot: {
+    position: 'absolute',
+    bottom: -1,
+    left: -1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: theme.queued,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.4)',
   },
   card: {
     position: 'absolute',
