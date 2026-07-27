@@ -6,7 +6,6 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -14,6 +13,8 @@ import { theme, contrastText, rgba } from '../lib/theme';
 import { badgeLabel, type Player } from '../lib/types';
 
 export const DISC_R = 30;
+/** Extra touch radius (field units) around the disc, for a generous tap area. */
+const TAP_PAD = 14;
 
 type Props = {
   player: Player;
@@ -65,11 +66,11 @@ function PlayerDiscBase({
   const originX = useSharedValue(player.x);
   const originY = useSharedValue(player.y);
 
-  // Keep the shared values in step when the store repositions the player
-  // (formation change, substitution, bench relayout).
+  // Snap to the stored position instantly. A spring here overshot on Reset —
+  // players slingshot past their slots before settling — which read as a bug.
   useEffect(() => {
-    x.value = withSpring(player.x, { damping: 18, stiffness: 180 });
-    y.value = withSpring(player.y, { damping: 18, stiffness: 180 });
+    x.value = player.x;
+    y.value = player.y;
   }, [player.x, player.y, x, y]);
 
   // The possession ring breathes slowly: readable at a glance, not loud.
@@ -141,18 +142,20 @@ function PlayerDiscBase({
     Gesture.Exclusive(doubleTap, singleTap)
   );
 
-  // Declared before the worklet below: Reanimated captures a worklet's closure
-  // at its definition site, so a value it reads must already be initialised or
-  // the capture hits the temporal dead zone and throws when the disc mounts.
-  const halfDisc = DISC_R * discScale;
+  // Touch target is bigger than the disc: a transparent padded box carries the
+  // gesture so the circle is easy to hit. Declared before the worklet below —
+  // Reanimated captures a worklet's closure at its definition site, so a value
+  // it reads must be initialised first or it throws when the disc mounts.
+  const discSize = DISC_R * 2 * discScale;
+  const touchSize = (DISC_R + TAP_PAD) * 2 * discScale;
+  const touchR = touchSize / 2;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: x.value * scaleX - halfDisc },
-      { translateY: y.value * scaleY - halfDisc },
+      { translateX: x.value * scaleX - touchR },
+      { translateY: y.value * scaleY - touchR },
       { scale: 1 + pressed.value * 0.12 },
     ],
-    shadowOpacity: 0.35 + pressed.value * 0.35,
     zIndex: pressed.value > 0 ? 20 : 10,
   }));
 
@@ -161,55 +164,52 @@ function PlayerDiscBase({
     transform: [{ scale: 1 + ring.value * 0.16 }],
   }));
 
-  const size = DISC_R * 2 * discScale;
   const label = badgeLabel(player);
 
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
-        style={[
-          styles.wrap,
-          { width: size, height: size, borderRadius: size / 2 },
-          animatedStyle,
-        ]}
+        style={[styles.wrap, { width: touchSize, height: touchSize }, animatedStyle]}
       >
-        {/* Possession ring, drawn just outside the disc edge. */}
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.ring,
-            {
-              borderRadius: size / 2,
-              borderWidth: Math.max(2, 3 * discScale),
-              borderColor: theme.ball,
-            },
-            ringStyle,
-          ]}
-        />
-        <View
-          style={[
-            styles.disc,
-            {
-              borderRadius: size / 2,
-              backgroundColor: scratched ? theme.surfaceAlt : color,
-              borderColor: queued ? theme.queued : rgba('#000000', 0.35),
-              borderWidth: queued ? 3 : 1.5,
-              opacity: scratched ? 0.45 : 1,
-            },
-          ]}
-        >
-          <Text
-            numberOfLines={1}
+        <View style={{ width: discSize, height: discSize }}>
+          {/* Possession ring, drawn just outside the disc edge. */}
+          <Animated.View
+            pointerEvents="none"
             style={[
-              styles.label,
+              styles.ring,
               {
-                color: scratched ? theme.textDim : contrastText(color),
-                fontSize: Math.max(11, 17 * discScale),
+                borderRadius: discSize / 2,
+                borderWidth: Math.max(2, 3 * discScale),
+                borderColor: theme.ball,
+              },
+              ringStyle,
+            ]}
+          />
+          <View
+            style={[
+              styles.disc,
+              {
+                borderRadius: discSize / 2,
+                backgroundColor: scratched ? theme.surfaceAlt : color,
+                borderColor: queued ? theme.queued : rgba('#000000', 0.35),
+                borderWidth: queued ? 3 : 1.5,
+                opacity: scratched ? 0.45 : 1,
               },
             ]}
           >
-            {label}
-          </Text>
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.label,
+                {
+                  color: scratched ? theme.textDim : contrastText(color),
+                  fontSize: Math.max(11, 17 * discScale),
+                },
+              ]}
+            >
+              {label}
+            </Text>
+          </View>
         </View>
       </Animated.View>
     </GestureDetector>
@@ -221,16 +221,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   ring: { ...StyleSheet.absoluteFill },
   disc: {
-    flex: 1,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    shadowOpacity: 0.4,
+    elevation: 4,
   },
   label: {
     fontWeight: '700',

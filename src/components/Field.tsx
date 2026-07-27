@@ -154,7 +154,8 @@ export function Field({ color, trailsOn, onPlayerAction }: Props) {
               />
             ))}
 
-          {match.roster.map((p) => (
+          {/* Only on-field players are drawn — the bench lives in the sub sheet. */}
+          {onFieldPlayers.map((p) => (
             <PlayerDisc
               key={p.id}
               player={p}

@@ -25,9 +25,11 @@ export function SubSheet({ outId, onClose, onEditBadge }: Props) {
   const out = match.roster.find((p) => p.id === outId);
   if (!out) return null;
 
-  const bench = match.roster.filter(
-    (p) => !p.onField && !match.scratched.includes(p.id)
-  );
+  // Least playing time first — who most needs a run — but the minutes stay
+  // hidden here; the coach just wants the order.
+  const bench = match.roster
+    .filter((p) => !p.onField && !match.scratched.includes(p.id))
+    .sort((a, b) => (match.minutes[a.id] ?? 0) - (match.minutes[b.id] ?? 0));
 
   const doSwap = (inId: string) => {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -69,9 +71,6 @@ export function SubSheet({ outId, onClose, onEditBadge }: Props) {
                 <View key={p.id} style={styles.benchRow}>
                   <View style={styles.benchMain}>
                     <Text style={styles.benchName}>{p.name}</Text>
-                    <Text style={styles.benchMins}>
-                      {formatClock(match.minutes[p.id] ?? 0)}
-                    </Text>
                   </View>
                   <Pressable style={styles.queueBtn} onPress={() => doQueue(p.id)}>
                     <Text style={styles.queueText}>Queue</Text>
@@ -172,12 +171,6 @@ const styles = StyleSheet.create({
   },
   benchMain: { flex: 1 },
   benchName: { color: theme.text, fontSize: 16, fontWeight: '600' },
-  benchMins: {
-    color: theme.textDim,
-    fontSize: 12,
-    fontVariant: ['tabular-nums'],
-    marginTop: 2,
-  },
   queueBtn: {
     paddingHorizontal: 12,
     paddingVertical: 7,
