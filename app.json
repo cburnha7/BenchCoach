@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "Bench Coach",
+    "slug": "bench-coach",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "benchcoach",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0e1320",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0e1320"
+    },
+    "ios": {
+      "bundleIdentifier": "com.charlesburnham.benchcoach",
+      "supportsTablet": true,
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [],
+        "NSPhotoLibraryUsageDescription": "Bench Coach uses your photos so you can put a team photo on each team."
+      }
+    },
+    "android": {
+      "package": "com.charlesburnham.benchcoach",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0e1320"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0e1320",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Bench Coach uses your photos so you can put a team photo on each team."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

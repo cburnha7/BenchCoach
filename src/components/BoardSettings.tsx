@@ -1,0 +1,174 @@
+import React from 'react';
+import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { useMatch } from '../store/useMatch';
+import { theme, radius } from '../lib/theme';
+
+type Props = {
+  visible: boolean;
+  onClose: () => void;
+  trailsOn: boolean;
+  onToggleTrails: (on: boolean) => void;
+};
+
+/**
+ * Board options behind the gear. These are set once and left alone for most of
+ * a match, so they don't earn permanent space next to the formation picker.
+ */
+export function BoardSettings({
+  visible,
+  onClose,
+  trailsOn,
+  onToggleTrails,
+}: Props) {
+  const match = useMatch((s) => s.match);
+  const toggleOpponent = useMatch((s) => s.toggleOpponent);
+  const resetOpponent = useMatch((s) => s.resetOpponent);
+  const clearBoard = useMatch((s) => s.clearBoard);
+
+  if (!match) return null;
+
+  const marks =
+    match.arrows.length + match.ghosts.length + (match.holder ? 1 : 0);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <Pressable style={styles.backdrop} onPress={onClose} />
+      <View style={styles.sheet}>
+        <View style={styles.grip} />
+        <Text style={styles.title}>Board</Text>
+
+        <View style={styles.row}>
+          <View style={styles.rowMain}>
+            <Text style={styles.rowLabel}>Opponents</Text>
+            <Text style={styles.rowHint}>
+              Draggable markers in a mirrored shape
+            </Text>
+          </View>
+          <Switch
+            value={match.opponent.on}
+            onValueChange={toggleOpponent}
+            trackColor={{ false: theme.controlBorder, true: theme.live }}
+            thumbColor={theme.text}
+          />
+        </View>
+
+        {match.opponent.on && (
+          <Pressable style={styles.action} onPress={resetOpponent}>
+            <Text style={styles.actionText}>Reset opponent shape</Text>
+          </Pressable>
+        )}
+
+        <View style={styles.row}>
+          <View style={styles.rowMain}>
+            <Text style={styles.rowLabel}>Trace runs</Text>
+            <Text style={styles.rowHint}>
+              Dragging a player leaves a trail behind
+            </Text>
+          </View>
+          <Switch
+            value={trailsOn}
+            onValueChange={onToggleTrails}
+            trackColor={{ false: theme.controlBorder, true: theme.live }}
+            thumbColor={theme.text}
+          />
+        </View>
+
+        <Pressable
+          style={[styles.action, marks > 0 && styles.actionAlert]}
+          onPress={() => {
+            clearBoard();
+            onClose();
+          }}
+          disabled={marks === 0}
+        >
+          <Text style={[styles.actionText, marks === 0 && styles.dim]}>
+            {marks > 0 ? 'Clear passes and trails' : 'Board is clear'}
+          </Text>
+        </Pressable>
+
+        <View style={styles.legend}>
+          <Text style={styles.legendTitle}>Controls</Text>
+          <Text style={styles.legendRow}>
+            <Text style={styles.legendKey}>Double tap</Text>  give the ball, or
+            pass to them
+          </Text>
+          <Text style={styles.legendRow}>
+            <Text style={styles.legendKey}>Tap</Text>  subs, number, scratch
+          </Text>
+          <Text style={styles.legendRow}>
+            <Text style={styles.legendKey}>Hold and drag</Text>  move a player
+          </Text>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: theme.scrim },
+  sheet: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 24,
+    backgroundColor: theme.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: theme.border,
+    padding: 18,
+  },
+  grip: {
+    alignSelf: 'center',
+    width: 38,
+    height: 4,
+    borderRadius: radius.pill,
+    backgroundColor: theme.border,
+    marginBottom: 14,
+  },
+  title: { color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 6 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.border,
+  },
+  rowMain: { flex: 1 },
+  rowLabel: { color: theme.text, fontSize: 16, fontWeight: '600' },
+  rowHint: { color: theme.textDim, fontSize: 12.5, marginTop: 3 },
+  action: {
+    marginTop: 12,
+    paddingVertical: 13,
+    borderRadius: radius.md,
+    backgroundColor: theme.control,
+    borderWidth: 1,
+    borderColor: theme.controlBorder,
+    alignItems: 'center',
+  },
+  actionAlert: { backgroundColor: theme.queued },
+  actionText: { color: theme.text, fontWeight: '700', fontSize: 15 },
+  dim: { color: theme.textDim },
+  legend: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: radius.md,
+    backgroundColor: theme.surfaceAlt,
+    gap: 7,
+  },
+  legendTitle: {
+    color: theme.textDim,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  legendRow: { color: theme.textDim, fontSize: 13 },
+  legendKey: { color: theme.text, fontWeight: '700' },
+});
