@@ -300,19 +300,28 @@ function RosterRow({
           {onField && (
             <View style={[styles.accentBar, { backgroundColor: color }]} />
           )}
-          <Pressable
-            onPress={() => onEditBadge(player.id)}
-            hitSlop={6}
-            style={[
-              styles.badge,
-              {
-                backgroundColor: onField ? color : theme.surfaceAlt,
-                opacity: scratched ? 0.4 : 1,
-              },
-            ]}
-          >
-            <Text style={styles.badgeText}>{badgeLabel(player)}</Text>
-          </Pressable>
+          <View style={styles.badgeWrap}>
+            <Pressable
+              onPress={editing ? () => onEditBadge(player.id) : undefined}
+              disabled={!editing}
+              hitSlop={6}
+              style={[
+                styles.badge,
+                {
+                  backgroundColor: onField ? color : theme.surfaceAlt,
+                  opacity: scratched ? 0.4 : 1,
+                },
+              ]}
+            >
+              <Text style={styles.badgeText}>{badgeLabel(player)}</Text>
+            </Pressable>
+            {/* Edit-mode affordance: tapping the icon opens number/emoji. */}
+            {editing && (
+              <View style={styles.badgePlus} pointerEvents="none">
+                <Text style={styles.badgePlusText}>+</Text>
+              </View>
+            )}
+          </View>
 
           <Text
             style={[styles.name, scratched && styles.scratchName]}
@@ -450,6 +459,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 2,
     borderBottomRightRadius: 2,
   },
+  badgeWrap: { width: 36, height: 36 },
   badge: {
     width: 36,
     height: 36,
@@ -458,6 +468,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: { color: theme.onAccent, fontWeight: '800', fontSize: 15 },
+  badgePlus: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: radius.pill,
+    backgroundColor: theme.live,
+    borderWidth: 1.5,
+    borderColor: theme.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgePlusText: {
+    color: theme.onAccent,
+    fontSize: 13,
+    fontWeight: '900',
+    lineHeight: 15,
+  },
   name: { flex: 1, color: theme.text, fontSize: 16, fontWeight: '600' },
   scratchName: {
     color: theme.textDim,
