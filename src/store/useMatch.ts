@@ -89,6 +89,7 @@ type MatchStore = {
   resetScore: () => void;
   resetStats: () => void;
   resetMinutes: () => void;
+  resetCards: () => void;
 
   movePlayer: (id: string, x: number, y: number) => void;
   setFormation: (idx: number) => void;
@@ -425,6 +426,10 @@ export const useMatch = create<MatchStore>((set, get) => {
         ...m,
         minutes: Object.fromEntries(m.roster.map((p) => [p.id, 0])),
       }));
+    },
+
+    resetCards: () => {
+      patch((m) => ({ ...m, cards: {} }));
     },
 
     movePlayer: (id, x, y) => {
