@@ -70,7 +70,8 @@ export function ScanSheet({ visible, onClose, onImport }: Props) {
 
       const opts: ImagePicker.ImagePickerOptions = {
         mediaTypes: ['images'],
-        allowsEditing: true,
+        // No crop step — OCR needs the whole page, not a square.
+        allowsEditing: false,
         quality: 1,
       };
       const result =
