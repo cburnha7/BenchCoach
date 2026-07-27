@@ -228,14 +228,27 @@ export const useMatch = create<MatchStore>((set, get) => {
       const trimmed = name.trim();
       if (!trimmed) return;
       patch((m) => {
-        const onFieldCount = m.roster.filter((p) => p.onField).length;
-        const goOn = onFieldCount < m.size;
+        const onField = m.roster.filter((p) => p.onField);
+        const goOn = onField.length < m.size;
+        // Starters drop straight into the next open formation slot rather than
+        // stacking at centre — loading a roster fills the shape in order.
+        let x = 300;
+        let y = BENCH_Y;
+        if (goOn) {
+          const slots = FORMATIONS[m.size][m.formationIdx].slots;
+          const taken = onField.map((p) => `${p.x},${p.y}`);
+          const free =
+            slots.find((s) => !taken.includes(`${s.x},${s.y}`)) ??
+            ({ x: 300, y: 400 } as const);
+          x = free.x;
+          y = free.y;
+        }
         const player: Player = {
           id: makeId('p'),
           name: trimmed,
           onField: goOn,
-          x: 300,
-          y: goOn ? 400 : BENCH_Y,
+          x,
+          y,
         };
         const roster = benchLayout([...m.roster, player]);
         return {
@@ -279,11 +292,13 @@ export const useMatch = create<MatchStore>((set, get) => {
     },
 
     setEmoji: (id, emoji) => {
+      // Emoji and jersey coexist: the emoji wins on the badge, the number is
+      // kept as the fallback for when the emoji is later cleared, and it still
+      // identifies the player elsewhere. Priority lives in `badgeLabel`.
       patch((m) => ({
         ...m,
         roster: m.roster.map((p) =>
-          // A badge shows one thing: setting an icon clears any number.
-          p.id === id ? { ...p, emoji: emoji || undefined, jersey: undefined } : p
+          p.id === id ? { ...p, emoji: emoji || undefined } : p
         ),
       }));
     },

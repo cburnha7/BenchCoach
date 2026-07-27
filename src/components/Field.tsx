@@ -1,13 +1,13 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { Pitch } from './Pitch';
-import { PlayerDisc } from './PlayerDisc';
+import { PlayerDisc, DISC_R } from './PlayerDisc';
 import { OpponentMarker } from './OpponentMarker';
 import { TacticsLayer } from './TacticsLayer';
-import { FIELD_W, FIELD_H } from '../lib/formations';
+import { FIELD_W, FIELD_H, FORMATIONS, positionLabels } from '../lib/formations';
 import { useMatch } from '../store/useMatch';
 import { firstName } from '../lib/types';
-import { radius } from '../lib/theme';
+import { radius, rgba } from '../lib/theme';
 
 /** A drag shorter than this is a nudge, not a run worth drawing. */
 const TRAIL_MIN_DISTANCE = 45;
@@ -85,6 +85,30 @@ export function Field({ color, trailsOn, onPlayerAction }: Props) {
 
   const queuedIds = new Set(match.queue.flatMap((q) => [q.out, q.in]));
 
+  // Empty starter slots: claim the nearest formation slot for each on-field
+  // player, then mark whatever is left as an open spot. Robust to dragging —
+  // a moved player still holds the slot closest to where they ended up.
+  const slots = FORMATIONS[match.size][match.formationIdx].slots;
+  const labels = positionLabels(match.size, match.formationIdx);
+  const onFieldPlayers = match.roster.filter((p) => p.onField);
+  const claimed = new Set<number>();
+  onFieldPlayers.forEach((p) => {
+    let best = -1;
+    let bestD = Infinity;
+    slots.forEach((s, i) => {
+      if (claimed.has(i)) return;
+      const d = (s.x - p.x) ** 2 + (s.y - p.y) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    });
+    if (best >= 0) claimed.add(best);
+  });
+  const emptySlots = slots
+    .map((s, i) => ({ s, i }))
+    .filter(({ i }) => !claimed.has(i));
+
   return (
     <View style={styles.fill} onLayout={onLayout}>
       {ready && (
@@ -102,6 +126,19 @@ export function Field({ color, trailsOn, onPlayerAction }: Props) {
             scaleX={scaleX}
             scaleY={scaleY}
           />
+
+          {/* Open starter slots, drawn under the players and non-interactive. */}
+          {emptySlots.map(({ s, i }) => (
+            <EmptySlot
+              key={`slot-${i}`}
+              x={s.x}
+              y={s.y}
+              label={labels[i]}
+              scaleX={scaleX}
+              scaleY={scaleY}
+              discScale={discScale}
+            />
+          ))}
 
           {match.opponent.on &&
             match.opponent.pos?.map((p, i) => (
@@ -140,8 +177,66 @@ export function Field({ color, trailsOn, onPlayerAction }: Props) {
   );
 }
 
+/** A dashed ghost disc marking an unfilled starter position. */
+function EmptySlot({
+  x,
+  y,
+  label,
+  scaleX,
+  scaleY,
+  discScale,
+}: {
+  x: number;
+  y: number;
+  label: string;
+  scaleX: number;
+  scaleY: number;
+  discScale: number;
+}) {
+  const size = DISC_R * 2 * discScale;
+  const half = DISC_R * discScale;
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        styles.slot,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          transform: [
+            { translateX: x * scaleX - half },
+            { translateY: y * scaleY - half },
+          ],
+        },
+      ]}
+    >
+      <Text style={[styles.slotText, { fontSize: Math.max(9, 12 * discScale) }]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   fill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  slot: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: rgba('#ffffff', 0.32),
+    backgroundColor: rgba('#ffffff', 0.05),
+    zIndex: 1,
+  },
+  slotText: {
+    color: rgba('#ffffff', 0.62),
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
   stage: {
     position: 'relative',
     shadowColor: '#000',

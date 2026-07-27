@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -57,7 +58,9 @@ function OpponentMarkerBase({
     })
     .onEnd(() => {
       pressed.value = withTiming(0, { duration: 160 });
-      onMove(index, x.value, y.value);
+      // onMove is a JS-thread setter; the gesture callback runs on the UI
+      // thread, so it must be marshalled across or the app crashes.
+      runOnJS(onMove)(index, x.value, y.value);
     });
 
   const style = useAnimatedStyle(() => ({

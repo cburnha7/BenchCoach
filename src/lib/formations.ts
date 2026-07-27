@@ -49,6 +49,71 @@ export const FORMATIONS: Record<TeamSize, Formation[]> = {
   ],
 };
 
+/** Position codes for one line, by role and how many players are in it. */
+function lineCodes(role: 'D' | 'M' | 'F', n: number): string[] {
+  const table: Record<'D' | 'M' | 'F', Record<number, string[]>> = {
+    D: {
+      1: ['CB'],
+      2: ['LB', 'RB'],
+      3: ['LB', 'CB', 'RB'],
+      4: ['LB', 'LCB', 'RCB', 'RB'],
+      5: ['LB', 'LCB', 'CB', 'RCB', 'RB'],
+    },
+    M: {
+      1: ['CM'],
+      2: ['LM', 'RM'],
+      3: ['LM', 'CM', 'RM'],
+      4: ['LM', 'LCM', 'RCM', 'RM'],
+      5: ['LM', 'LCM', 'CM', 'RCM', 'RM'],
+    },
+    F: {
+      1: ['ST'],
+      2: ['LS', 'RS'],
+      3: ['LW', 'ST', 'RW'],
+    },
+  };
+  return table[role][n] ?? Array<string>(n).fill(role);
+}
+
+/**
+ * A human position code (GK, CB, LM, ST, …) for every slot of a formation,
+ * derived from its name. Slot 0 is always the keeper; the remaining lines read
+ * defence → attack, and within a line left → right by x. Used to label empty
+ * starter slots on the board so the shape is legible before players are added.
+ */
+export function positionLabels(size: TeamSize, idx: number): string[] {
+  const formation = FORMATIONS[size][idx];
+  const slots = formation.slots;
+  // Outfield line counts from the name, dropping qualifiers like "Diamond".
+  const lines = formation.name
+    .split(/\s+/)[0]
+    .split('-')
+    .map((n) => parseInt(n, 10))
+    .filter((n) => Number.isFinite(n) && n > 0);
+
+  const labels = new Array<string>(slots.length).fill('·');
+  labels[0] = 'GK';
+
+  let cursor = 1;
+  lines.forEach((count, lineNo) => {
+    const role: 'D' | 'M' | 'F' =
+      lineNo === 0 ? 'D' : lineNo === lines.length - 1 ? 'F' : 'M';
+    // The line's slots are consecutive in the array; order them left → right.
+    const idxs: number[] = [];
+    for (let k = 0; k < count && cursor + k < slots.length; k++) {
+      idxs.push(cursor + k);
+    }
+    idxs.sort((a, b) => slots[a].x - slots[b].x);
+    const codes = lineCodes(role, count);
+    idxs.forEach((si, i) => {
+      labels[si] = codes[i] ?? role;
+    });
+    cursor += count;
+  });
+
+  return labels;
+}
+
 /** Opponent slots: mirrored across the halfway line, compressed to 90%. */
 export function mirrorSlots(size: TeamSize, idx: number): Slot[] {
   return FORMATIONS[size][idx].slots.map((s, i) =>

@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { theme, contrastText, rgba } from '../lib/theme';
-import type { Player } from '../lib/types';
+import { badgeLabel, type Player } from '../lib/types';
 
 export const DISC_R = 30;
 
@@ -159,7 +159,7 @@ function PlayerDiscBase({
   }));
 
   const size = DISC_R * 2 * discScale;
-  const label = player.jersey ?? player.emoji ?? initials(player.name);
+  const label = badgeLabel(player);
 
   return (
     <GestureDetector gesture={gesture}>
@@ -211,12 +211,6 @@ function PlayerDiscBase({
       </Animated.View>
     </GestureDetector>
   );
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 const styles = StyleSheet.create({

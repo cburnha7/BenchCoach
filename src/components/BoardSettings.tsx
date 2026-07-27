@@ -24,6 +24,7 @@ export function BoardSettings({
   const toggleOpponent = useMatch((s) => s.toggleOpponent);
   const resetOpponent = useMatch((s) => s.resetOpponent);
   const clearBoard = useMatch((s) => s.clearBoard);
+  const applyFormation = useMatch((s) => s.applyFormation);
 
   if (!match) return null;
 
@@ -77,6 +78,16 @@ export function BoardSettings({
             thumbColor={theme.text}
           />
         </View>
+
+        <Pressable
+          style={styles.action}
+          onPress={() => {
+            applyFormation();
+            onClose();
+          }}
+        >
+          <Text style={styles.actionText}>Reset positions to formation</Text>
+        </Pressable>
 
         <Pressable
           style={[styles.action, marks > 0 && styles.actionAlert]}

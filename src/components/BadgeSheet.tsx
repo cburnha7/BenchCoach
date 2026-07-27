@@ -35,7 +35,7 @@ export function BadgeSheet({ playerId, onClose }: Props) {
   useEffect(() => {
     if (player) {
       setBuf(player.jersey ?? '');
-      setTab(player.emoji && !player.jersey ? 'emoji' : 'number');
+      setTab(player.emoji ? 'emoji' : 'number');
     }
   }, [playerId, player]);
 
@@ -66,7 +66,7 @@ export function BadgeSheet({ playerId, onClose }: Props) {
       <Pressable style={styles.backdrop} onPress={commit} />
       <View style={styles.card}>
         <Text style={styles.title}>{player.name}</Text>
-        <Text style={styles.sub}>Shown on the player's disc</Text>
+        <Text style={styles.sub}>Emoji shows on the disc; the number is the fallback</Text>
 
         <View style={styles.tabs}>
           <Pressable
@@ -112,6 +112,16 @@ export function BadgeSheet({ playerId, onClose }: Props) {
         ) : (
           <ScrollView style={styles.emojiScroll}>
             <View style={styles.emojiGrid}>
+              {/* Clears the emoji so the badge falls back to the number. */}
+              <Pressable
+                style={[styles.emojiBtn, !player.emoji && styles.emojiOn]}
+                onPress={() => {
+                  setEmoji(player.id, undefined);
+                  onClose();
+                }}
+              >
+                <Text style={styles.noneText}>None</Text>
+              </Pressable>
               {EMOJI.map((e) => (
                 <Pressable
                   key={e}
@@ -126,7 +136,7 @@ export function BadgeSheet({ playerId, onClose }: Props) {
         )}
 
         <Pressable style={styles.clear} onPress={clear}>
-          <Text style={styles.clearText}>Clear badge (show initials)</Text>
+          <Text style={styles.clearText}>Clear both (show initials)</Text>
         </Pressable>
       </View>
     </Modal>
@@ -198,6 +208,7 @@ const styles = StyleSheet.create({
   },
   emojiOn: { borderColor: theme.live },
   emojiText: { fontSize: 26 },
+  noneText: { color: theme.textDim, fontWeight: '700', fontSize: 13 },
   clear: {
     marginTop: 14,
     paddingVertical: 11,

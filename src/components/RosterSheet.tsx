@@ -8,11 +8,23 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScanSheet } from './ScanSheet';
 import { useMatch } from '../store/useMatch';
-import { formatClock, type Player } from '../lib/types';
-import { theme, radius } from '../lib/theme';
+import { badgeLabel, formatClock, type Player } from '../lib/types';
+import { theme, radius, mix } from '../lib/theme';
 
 type Props = {
   visible: boolean;
@@ -22,10 +34,15 @@ type Props = {
   onEditBadge: (playerId: string) => void;
 };
 
+// How far a row must travel before the swipe commits, and how far it can go.
+const SWIPE_TRIGGER = 76;
+const SWIPE_MAX = 128;
+
 /**
- * The squad: add players, see live minutes, set a player's number or icon.
- * Team-level settings (photo, colour, size) live on the team edit screen —
- * this sheet is only ever about players.
+ * The squad. Field players sit on top (highlighted), bench below, scratched
+ * players last (dimmed) — each group ordered by minutes played, most first.
+ * The list is read-only until you tap Edit; the only per-row gesture is a
+ * swipe: left to scratch, right to restore.
  */
 export function RosterSheet({
   visible,
@@ -36,16 +53,15 @@ export function RosterSheet({
 }: Props) {
   const insets = useSafeAreaInsets();
   const match = useMatch((s) => s.match);
-  // Subscribing to tickCount keeps the minutes column live while the clock runs.
+  // Subscribing to tickCount keeps the minutes live while the clock runs.
   useMatch((s) => s.tickCount);
   const addPlayer = useMatch((s) => s.addPlayer);
   const removePlayer = useMatch((s) => s.removePlayer);
   const toggleScratch = useMatch((s) => s.toggleScratch);
-  const sendToBench = useMatch((s) => s.sendToBench);
-  const bringOn = useMatch((s) => s.bringOn);
 
   const [name, setName] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   if (!match) return null;
 
@@ -55,68 +71,43 @@ export function RosterSheet({
     setName('');
   };
 
-  const onField = match.roster.filter((p) => p.onField).length;
+  const scratchedSet = new Set(match.scratched);
+  const mins = (p: Player) => match.minutes[p.id] ?? 0;
+  const byMinutesDesc = (a: Player, b: Player) => mins(b) - mins(a);
 
-  // Least minutes first: the question this screen answers is who needs a run.
-  const sorted = [...match.roster].sort(
-    (a, b) => (match.minutes[a.id] ?? 0) - (match.minutes[b.id] ?? 0)
-  );
+  const field = match.roster
+    .filter((p) => p.onField && !scratchedSet.has(p.id))
+    .sort(byMinutesDesc);
+  const bench = match.roster
+    .filter((p) => !p.onField && !scratchedSet.has(p.id))
+    .sort(byMinutesDesc);
+  const scratched = match.roster
+    .filter((p) => scratchedSet.has(p.id))
+    .sort(byMinutesDesc);
+  const data = [...field, ...bench, ...scratched];
+
+  // Ids that start a new group, so we can nudge a little air above them.
+  const firstBenchId = bench[0]?.id;
+  const firstScratchedId = scratched[0]?.id;
 
   const renderItem = ({ item }: { item: Player }) => {
-    const scratched = match.scratched.includes(item.id);
+    const isScratched = scratchedSet.has(item.id);
+    const topGap =
+      (item.id === firstBenchId && field.length > 0) ||
+      (item.id === firstScratchedId && field.length + bench.length > 0);
     return (
-      <View style={styles.row}>
-        <Pressable
-          onPress={() => onEditBadge(item.id)}
-          style={[
-            styles.badge,
-            {
-              backgroundColor: item.onField ? color : theme.surfaceAlt,
-              opacity: scratched ? 0.4 : 1,
-            },
-          ]}
-        >
-          <Text style={styles.badgeText}>
-            {item.jersey ?? item.emoji ?? item.name.slice(0, 1).toUpperCase()}
-          </Text>
-        </Pressable>
-
-        <View style={styles.rowMain}>
-          <Text style={[styles.name, scratched && styles.dim]} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <Text style={styles.status}>
-            {scratched ? 'Scratched' : item.onField ? 'On field' : 'Bench'}
-          </Text>
-        </View>
-
-        <Text style={[styles.mins, scratched && styles.dim]}>
-          {formatClock(match.minutes[item.id] ?? 0)}
-        </Text>
-
-        <Pressable
-          style={[styles.actionBtn, item.onField && styles.actionOn]}
-          onPress={() => (item.onField ? sendToBench(item.id) : bringOn(item.id))}
-          hitSlop={6}
-        >
-          <Text style={styles.actionText}>{item.onField ? 'Bench' : 'On'}</Text>
-        </Pressable>
-        <Pressable
-          style={styles.actionBtn}
-          onPress={() => toggleScratch(item.id)}
-          hitSlop={6}
-        >
-          <Text style={styles.actionText}>{scratched ? 'Undo' : 'Scratch'}</Text>
-        </Pressable>
-        <Pressable
-          style={styles.actionBtn}
-          onLongPress={() => removePlayer(item.id)}
-          delayLongPress={500}
-          hitSlop={6}
-        >
-          <Text style={[styles.actionText, styles.danger]}>Del</Text>
-        </Pressable>
-      </View>
+      <RosterRow
+        player={item}
+        minutes={mins(item)}
+        color={color}
+        onField={item.onField && !isScratched}
+        scratched={isScratched}
+        editing={editing}
+        topGap={topGap}
+        onEditBadge={onEditBadge}
+        onRemove={removePlayer}
+        onToggleScratch={toggleScratch}
+      />
     );
   };
 
@@ -127,62 +118,80 @@ export function RosterSheet({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.sheet}>
+      {/* RNGH needs its own root inside a Modal for the swipe to register. */}
+      <GestureHandlerRootView style={styles.sheet}>
         <View style={styles.header}>
           <View style={[styles.accent, { backgroundColor: color }]} />
           <View style={styles.headerInner}>
-            <Text style={styles.title}>{teamName}</Text>
+            <Text style={styles.title} numberOfLines={1}>
+              {teamName}
+            </Text>
             <Text style={styles.headerSub}>
-              {match.roster.length} players · {onField} on field
+              {match.roster.length} players · {field.length} on field
             </Text>
           </View>
-        </View>
-
-        <Pressable style={styles.scanBtn} onPress={() => setScanning(true)}>
-          <Text style={styles.scanIcon}>📷</Text>
-          <Text style={styles.scanText}>Scan a roster photo</Text>
-        </Pressable>
-
-        <View style={styles.addRow}>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Add a player"
-            placeholderTextColor={theme.textDim}
-            style={styles.input}
-            returnKeyType="done"
-            onSubmitEditing={submit}
-            autoCorrect={false}
-          />
           <Pressable
-            style={[styles.addBtn, !name.trim() && styles.addBtnOff]}
-            onPress={submit}
+            onPress={() => setEditing((e) => !e)}
+            hitSlop={10}
+            style={[styles.editBtn, editing && styles.editBtnOn]}
           >
-            <Text style={styles.addText}>Add</Text>
+            <Text style={[styles.editText, editing && styles.editTextOn]}>
+              {editing ? 'Done' : 'Edit'}
+            </Text>
           </Pressable>
         </View>
 
+        {editing && (
+          <>
+            <Pressable style={styles.scanBtn} onPress={() => setScanning(true)}>
+              <Text style={styles.scanIcon}>📷</Text>
+              <Text style={styles.scanText}>Scan a roster photo</Text>
+            </Pressable>
+
+            <View style={styles.addRow}>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder="Add a player"
+                placeholderTextColor={theme.textDim}
+                style={styles.input}
+                returnKeyType="done"
+                onSubmitEditing={submit}
+                autoCorrect={false}
+              />
+              <Pressable
+                style={[styles.addBtn, !name.trim() && styles.addBtnOff]}
+                onPress={submit}
+              >
+                <Text style={styles.addText}>Add</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
+
         <FlatList
-          data={sorted}
+          data={data}
           keyExtractor={(p) => p.id}
           renderItem={renderItem}
           contentContainerStyle={[
             styles.list,
-            { paddingBottom: insets.bottom + 60 },
+            { paddingBottom: insets.bottom + 84 },
           ]}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No players yet</Text>
               <Text style={styles.emptyBody}>
-                Add them above. The first {match.size} go straight onto the
-                field.
+                Tap Edit, then add them. The first {match.size} go straight onto
+                the field.
               </Text>
             </View>
           }
           ListHeaderComponent={
             match.roster.length > 0 ? (
               <Text style={styles.listCap}>
-                Fewest minutes first · tap a badge to set a number
+                {editing
+                  ? 'Tap a badge to set a number or emoji · 🗑 removes'
+                  : 'Swipe left to scratch · right to restore · tap a badge to edit'}
               </Text>
             ) : null
           }
@@ -200,25 +209,168 @@ export function RosterSheet({
           onClose={() => setScanning(false)}
           onImport={(found) => found.forEach((n) => addPlayer(n))}
         />
-      </View>
+      </GestureHandlerRootView>
     </Modal>
+  );
+}
+
+type RowProps = {
+  player: Player;
+  minutes: number;
+  color: string;
+  onField: boolean;
+  scratched: boolean;
+  editing: boolean;
+  topGap: boolean;
+  onEditBadge: (id: string) => void;
+  onRemove: (id: string) => void;
+  onToggleScratch: (id: string) => void;
+};
+
+function RosterRow({
+  player,
+  minutes,
+  color,
+  onField,
+  scratched,
+  editing,
+  topGap,
+  onEditBadge,
+  onRemove,
+  onToggleScratch,
+}: RowProps) {
+  const tx = useSharedValue(0);
+
+  const commitSwipe = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onToggleScratch(player.id);
+  };
+
+  const pan = Gesture.Pan()
+    .enabled(!editing)
+    .activeOffsetX([-14, 14])
+    .failOffsetY([-12, 12])
+    .onChange((e) => {
+      const next = tx.value + e.changeX;
+      // Only the meaningful direction moves: a scratched row swipes right to
+      // restore, an active row swipes left to scratch.
+      tx.value = scratched
+        ? Math.min(SWIPE_MAX, Math.max(0, next))
+        : Math.max(-SWIPE_MAX, Math.min(0, next));
+    })
+    .onEnd(() => {
+      if (Math.abs(tx.value) >= SWIPE_TRIGGER) runOnJS(commitSwipe)();
+      tx.value = withTiming(0, { duration: 190 });
+    });
+
+  const fgStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tx.value }],
+  }));
+  const hintStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, Math.abs(tx.value) / SWIPE_TRIGGER),
+  }));
+
+  return (
+    <View style={[styles.rowWrap, topGap && styles.rowGap]}>
+      {/* Action revealed under the row as it slides. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.rowHint,
+          {
+            alignItems: scratched ? 'flex-start' : 'flex-end',
+            backgroundColor: scratched
+              ? mix(theme.live, 0.5)
+              : mix(theme.danger, 0.5),
+          },
+          hintStyle,
+        ]}
+      >
+        <Text style={styles.hintText}>{scratched ? 'Restore' : 'Scratch'}</Text>
+      </Animated.View>
+
+      <GestureDetector gesture={pan}>
+        <Animated.View
+          style={[
+            styles.rowFg,
+            onField && { backgroundColor: mix(color, 0.86) },
+            fgStyle,
+          ]}
+        >
+          {onField && (
+            <View style={[styles.accentBar, { backgroundColor: color }]} />
+          )}
+          <Pressable
+            onPress={() => onEditBadge(player.id)}
+            hitSlop={6}
+            style={[
+              styles.badge,
+              {
+                backgroundColor: onField ? color : theme.surfaceAlt,
+                opacity: scratched ? 0.4 : 1,
+              },
+            ]}
+          >
+            <Text style={styles.badgeText}>{badgeLabel(player)}</Text>
+          </Pressable>
+
+          <Text
+            style={[styles.name, scratched && styles.scratchName]}
+            numberOfLines={1}
+          >
+            {player.name}
+          </Text>
+
+          {editing ? (
+            <Pressable
+              style={styles.del}
+              onPress={() => onRemove(player.id)}
+              hitSlop={8}
+            >
+              <Text style={styles.delText}>🗑</Text>
+            </Pressable>
+          ) : (
+            <Text style={[styles.mins, scratched && styles.dim]}>
+              {formatClock(minutes)}
+            </Text>
+          )}
+        </Animated.View>
+      </GestureDetector>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   sheet: { flex: 1, backgroundColor: theme.bg },
-  header: { flexDirection: 'row', paddingTop: 18, paddingBottom: 4 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 18,
+    paddingBottom: 6,
+    paddingRight: 16,
+  },
   accent: { width: 5, borderTopRightRadius: 3, borderBottomRightRadius: 3 },
-  headerInner: { flex: 1, paddingLeft: 14, paddingRight: 18 },
+  headerInner: { flex: 1, paddingLeft: 14, paddingRight: 12 },
   title: { color: theme.text, fontSize: 26, fontWeight: '800', letterSpacing: -0.4 },
   headerSub: { color: theme.textDim, fontSize: 13, marginTop: 4, fontWeight: '500' },
+  editBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    backgroundColor: theme.control,
+    borderWidth: 1,
+    borderColor: theme.controlBorder,
+  },
+  editBtnOn: { backgroundColor: theme.text, borderColor: theme.text },
+  editText: { color: theme.text, fontWeight: '700', fontSize: 14 },
+  editTextOn: { color: theme.bg },
   scanBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 9,
     marginHorizontal: 16,
-    marginTop: 14,
+    marginTop: 12,
     paddingVertical: 14,
     borderRadius: radius.lg,
     backgroundColor: theme.control,
@@ -247,52 +399,81 @@ const styles = StyleSheet.create({
   },
   addBtnOff: { backgroundColor: theme.control },
   addText: { color: theme.onAccent, fontWeight: '800', fontSize: 15 },
-  list: { paddingHorizontal: 16 },
+  list: { paddingHorizontal: 16, paddingTop: 6 },
   listCap: {
     color: theme.textDim,
     fontSize: 11,
     fontWeight: '600',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  row: {
+  rowWrap: {
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  rowGap: { marginTop: 14 },
+  rowHint: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  hintText: {
+    color: theme.onAccent,
+    fontWeight: '800',
+    fontSize: 13,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  rowFg: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 9,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.border,
+    gap: 12,
+    paddingVertical: 10,
+    paddingLeft: 12,
+    paddingRight: 14,
+    borderRadius: radius.md,
+    backgroundColor: theme.surface,
+  },
+  accentBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
   },
   badge: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeText: { color: theme.onAccent, fontWeight: '800', fontSize: 14 },
-  rowMain: { flex: 1 },
-  name: { color: theme.text, fontSize: 16, fontWeight: '600' },
-  status: { color: theme.textDim, fontSize: 12, marginTop: 2 },
+  badgeText: { color: theme.onAccent, fontWeight: '800', fontSize: 15 },
+  name: { flex: 1, color: theme.text, fontSize: 16, fontWeight: '600' },
+  scratchName: {
+    color: theme.textDim,
+    textDecorationLine: 'line-through',
+  },
   dim: { opacity: 0.5 },
   mins: {
     color: theme.text,
     fontSize: 16,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
-    minWidth: 50,
+    minWidth: 48,
     textAlign: 'right',
   },
-  actionBtn: {
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    backgroundColor: theme.control,
-  },
-  actionOn: { backgroundColor: theme.controlBorder },
-  actionText: { color: theme.text, fontSize: 11.5, fontWeight: '700' },
-  danger: { color: theme.danger },
+  del: { paddingHorizontal: 6, paddingVertical: 2 },
+  delText: { fontSize: 18 },
   empty: { paddingTop: 50, alignItems: 'center', paddingHorizontal: 20 },
   emptyTitle: { color: theme.text, fontSize: 17, fontWeight: '700' },
   emptyBody: {
