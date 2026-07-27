@@ -10,15 +10,20 @@ type Props = {
   onAddUs: () => void;
   /** Us minus — opens the list of this game's goals to remove one. */
   onRemoveUs: () => void;
+  /**
+   * Inline drops the bar chrome and the half-and-half stretch so the two
+   * steppers can sit among the other controls in the wide (tablet) row.
+   */
+  inline?: boolean;
 };
 
 /**
- * Slim game scoreboard under the pitch. Them on the left, Us on the right
- * (matching the coach's own side of the board). Them's buttons and Us's minus
- * just nudge the number; Us's plus goes through the goal sheet so the goal is
- * credited to a player. Long-press either score to reset the game to 0–0.
+ * Game scoreboard. Them on the left, Us on the right (the coach's own side of
+ * the board). Them's buttons and Us's minus nudge the number; Us's plus goes
+ * through the goal sheet so the goal is credited to a player, and Us's minus
+ * opens the goal log to remove one. Long-press either score to reset to 0–0.
  */
-export function ScoreBoard({ color, onAddUs, onRemoveUs }: Props) {
+export function ScoreBoard({ color, onAddUs, onRemoveUs, inline = false }: Props) {
   const match = useMatch((s) => s.match);
   const bumpScore = useMatch((s) => s.bumpScore);
   const resetScore = useMatch((s) => s.resetScore);
@@ -43,7 +48,7 @@ export function ScoreBoard({ color, onAddUs, onRemoveUs }: Props) {
     onMinus: () => void;
     onPlus: () => void;
   }) => (
-    <View style={styles.block}>
+    <View style={[styles.block, !inline && styles.blockFill]}>
       <Pressable
         style={({ pressed }) => [styles.step, pressed && styles.pressed]}
         onPress={onMinus}
@@ -74,7 +79,7 @@ export function ScoreBoard({ color, onAddUs, onRemoveUs }: Props) {
   );
 
   return (
-    <View style={styles.bar}>
+    <View style={inline ? styles.inline : styles.bar}>
       <Stepper
         label="THEM"
         value={match.score.them}
@@ -105,13 +110,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
   },
+  inline: { flexDirection: 'row', alignItems: 'center' },
   block: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 8,
     paddingHorizontal: 10,
   },
+  blockFill: { flex: 1, justifyContent: 'space-between', gap: 0 },
   divider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: theme.border },
   step: {
     width: 34,

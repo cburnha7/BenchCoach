@@ -20,6 +20,8 @@ type Props = {
    * the whole row for the sake of a short formation name.
    */
   inline?: boolean;
+  /** Fill the available width of a row (flex) rather than sizing to content. */
+  fill?: boolean;
   /** Heading in the picker sheet. Defaults to "Formation". */
   title?: string;
 };
@@ -34,6 +36,7 @@ export function FormationPicker({
   index,
   onSelect,
   inline = false,
+  fill = false,
   title = 'Formation',
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -52,6 +55,7 @@ export function FormationPicker({
         style={({ pressed }) => [
           styles.trigger,
           inline && styles.triggerInline,
+          fill && styles.triggerFill,
           pressed && styles.pressed,
         ]}
         onPress={() => setOpen(true)}
@@ -128,6 +132,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   triggerInline: { minWidth: 128 },
+  triggerFill: { flex: 1 },
   pressed: { opacity: 0.85 },
   current: {
     color: theme.text,

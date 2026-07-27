@@ -93,6 +93,68 @@ export default function TeamScreen() {
   const boardActive =
     ready && (match.opponent.on || trailsOn || match.arrows.length > 0);
 
+  // Shared controls, reused between the tablet (one row) and phone layouts.
+  const gearBtn = (
+    <Pressable
+      style={({ pressed }) => [
+        styles.gear,
+        boardActive && styles.gearOn,
+        pressed && styles.pressed,
+      ]}
+      onPress={() => setBoardOpen(true)}
+    >
+      <Text style={[styles.gearIcon, boardActive && styles.gearIconOn]}>⚙</Text>
+    </Pressable>
+  );
+
+  const resetBtn = (
+    <Pressable
+      style={({ pressed }) => [styles.btn, pressed && styles.pressed]}
+      onPress={resetField}
+    >
+      <Text style={styles.btnText}>Reset</Text>
+    </Pressable>
+  );
+
+  const rosterButton = (extra: object) => (
+    <Pressable
+      style={({ pressed }) => [styles.btn, extra, pressed && styles.pressed]}
+      onPress={() => setRosterOpen(true)}
+    >
+      <Text style={styles.btnText}>Roster</Text>
+    </Pressable>
+  );
+
+  const subsButton = (extra: object) => (
+    <Pressable
+      style={({ pressed }) => [
+        styles.btn,
+        extra,
+        queued > 0 ? styles.btnAlert : styles.btnOff,
+        pressed && styles.pressed,
+      ]}
+      onPress={runAllQueued}
+      disabled={queued === 0}
+    >
+      <Text
+        style={[styles.btnText, queued > 0 ? styles.btnTextAlert : styles.btnTextOff]}
+      >
+        {queued > 0 ? `Run ${queued}` : 'No subs'}
+      </Text>
+    </Pressable>
+  );
+
+  const formationPicker = (fill: boolean) =>
+    ready ? (
+      <FormationPicker
+        size={team.size}
+        index={match.formationIdx}
+        onSelect={setFormation}
+        inline={!fill}
+        fill={fill}
+      />
+    ) : null;
+
   return (
     <View style={styles.screen}>
       <MatchBackdrop />
@@ -100,123 +162,61 @@ export default function TeamScreen() {
           which competed with the team name. Force the short, quiet "Back". */}
       <Stack.Screen options={{ title: team.name, headerBackTitle: 'Back' }} />
 
-      {!wide && <ClockBar />}
-
-      <View style={[styles.controls, wide && styles.controlsWide]}>
-        {wide && <ClockBar inline />}
-        {ready && (
-          <FormationPicker
-            size={team.size}
-            index={match.formationIdx}
-            onSelect={setFormation}
-            inline={wide}
-          />
-        )}
-
-        {!wide && <View style={styles.spacer} />}
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.gear,
-            boardActive && styles.gearOn,
-            pressed && styles.pressed,
-          ]}
-          onPress={() => setBoardOpen(true)}
-        >
-          <Text style={[styles.gearIcon, boardActive && styles.gearIconOn]}>
-            ⚙
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [styles.btn, pressed && styles.pressed]}
-          onPress={resetField}
-        >
-          <Text style={styles.btnText}>Reset</Text>
-        </Pressable>
-
-        {wide && <View style={styles.spacer} />}
-
-        {wide && (
-          <>
-            <Pressable
-              style={({ pressed }) => [
-                styles.btn,
-                styles.btnWide,
-                pressed && styles.pressed,
-              ]}
-              onPress={() => setRosterOpen(true)}
-            >
-              <Text style={styles.btnText}>Roster</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.btn,
-                styles.btnWide,
-                queued > 0 ? styles.btnAlert : styles.btnOff,
-                pressed && styles.pressed,
-              ]}
-              onPress={runAllQueued}
-              disabled={queued === 0}
-            >
-              <Text
-                style={[
-                  styles.btnText,
-                  queued > 0 ? styles.btnTextAlert : styles.btnTextOff,
-                ]}
-              >
-                {queued > 0 ? `Run ${queued}` : 'No subs'}
-              </Text>
-            </Pressable>
-          </>
-        )}
-      </View>
+      {wide ? (
+        /* Tablet: clock, scoreboard, formation, gear, reset and actions all
+           collapse into a single row above the pitch. */
+        <View style={[styles.controls, styles.controlsWide]}>
+          <ClockBar inline />
+          {ready && (
+            <ScoreBoard
+              inline
+              color={color}
+              onAddUs={() => setGoalOpen(true)}
+              onRemoveUs={() => setGoalLogOpen(true)}
+            />
+          )}
+          {formationPicker(false)}
+          {gearBtn}
+          {resetBtn}
+          <View style={styles.spacer} />
+          {rosterButton(styles.btnWide)}
+          {subsButton(styles.btnWide)}
+        </View>
+      ) : (
+        /* Phone: clock and the scoreboard ride above the pitch. */
+        <>
+          <ClockBar />
+          {ready && (
+            <ScoreBoard
+              color={color}
+              onAddUs={() => setGoalOpen(true)}
+              onRemoveUs={() => setGoalLogOpen(true)}
+            />
+          )}
+        </>
+      )}
 
       <Field color={color} trailsOn={trailsOn} onPlayerAction={setActionFor} />
 
-      {ready && (
-        <ScoreBoard
-          color={color}
-          onAddUs={() => setGoalOpen(true)}
-          onRemoveUs={() => setGoalLogOpen(true)}
-        />
-      )}
-
       {!wide && (
-        <View
-          style={[styles.footer, styles.footerRow, { paddingBottom: insets.bottom + 8 }]}
-        >
-          <Pressable
-            style={({ pressed }) => [
-              styles.btn,
-              styles.footerBtn,
-              pressed && styles.pressed,
+        /* Phone: formation/gear/reset, then roster/subs, sit below the pitch. */
+        <>
+          <View style={styles.controls}>
+            {formationPicker(true)}
+            {gearBtn}
+            {resetBtn}
+          </View>
+          <View
+            style={[
+              styles.footer,
+              styles.footerRow,
+              { paddingBottom: insets.bottom + 8 },
             ]}
-            onPress={() => setRosterOpen(true)}
           >
-            <Text style={styles.btnText}>Roster</Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.btn,
-              styles.footerBtn,
-              queued > 0 ? styles.btnAlert : styles.btnOff,
-              pressed && styles.pressed,
-            ]}
-            onPress={runAllQueued}
-            disabled={queued === 0}
-          >
-            <Text
-              style={[
-                styles.btnText,
-                queued > 0 ? styles.btnTextAlert : styles.btnTextOff,
-              ]}
-            >
-              {queued > 0 ? `Run ${queued}` : 'No subs'}
-            </Text>
-          </Pressable>
-        </View>
+            {rosterButton(styles.footerBtn)}
+            {subsButton(styles.footerBtn)}
+          </View>
+        </>
       )}
 
       <BoardSettings

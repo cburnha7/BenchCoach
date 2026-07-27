@@ -93,7 +93,7 @@ export function SubSheet({ outId, onClose, color }: Props) {
           </Pressable>
           <Pressable style={styles.cardBtn} onPress={sendOff}>
             <View style={[styles.swatch, { backgroundColor: theme.danger }]} />
-            <Text style={styles.cardText}>Red — off for good</Text>
+            <Text style={styles.cardText}>Red</Text>
           </Pressable>
         </View>
 
