@@ -141,6 +141,11 @@ function PlayerDiscBase({
     Gesture.Exclusive(doubleTap, singleTap)
   );
 
+  // Declared before the worklet below: Reanimated captures a worklet's closure
+  // at its definition site, so a value it reads must already be initialised or
+  // the capture hits the temporal dead zone and throws when the disc mounts.
+  const halfDisc = DISC_R * discScale;
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: x.value * scaleX - halfDisc },
@@ -150,8 +155,6 @@ function PlayerDiscBase({
     shadowOpacity: 0.35 + pressed.value * 0.35,
     zIndex: pressed.value > 0 ? 20 : 10,
   }));
-
-  const halfDisc = DISC_R * discScale;
 
   const ringStyle = useAnimatedStyle(() => ({
     opacity: ring.value * 0.9,
