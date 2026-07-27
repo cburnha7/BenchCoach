@@ -20,24 +20,43 @@ type Props = {
 export function SubSheet({ outId, onClose, color }: Props) {
   const match = useMatch((s) => s.match);
   const queueSub = useMatch((s) => s.queueSub);
+  const giveCard = useMatch((s) => s.giveCard);
+  const clearCard = useMatch((s) => s.clearCard);
 
   if (!match || !outId) return null;
   const out = match.roster.find((p) => p.id === outId);
   if (!out) return null;
 
-  // Anyone already tied to a queued sub is off the table.
+  const outCard = match.cards[outId];
+
+  // Anyone already tied to a queued sub, or sent off, is off the table.
   const queued = new Set(match.queue.flatMap((q) => [q.in, q.out]));
 
   const bench = match.roster
     .filter(
       (p) =>
-        !p.onField && !match.scratched.includes(p.id) && !queued.has(p.id)
+        !p.onField &&
+        !match.scratched.includes(p.id) &&
+        match.cards[p.id] !== 'red' &&
+        !queued.has(p.id)
     )
     .sort((a, b) => (match.minutes[a.id] ?? 0) - (match.minutes[b.id] ?? 0));
 
   const pick = (inId: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     queueSub(outId, inId);
+    onClose();
+  };
+
+  const toggleYellow = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (outCard === 'yellow') clearCard(outId);
+    else giveCard(outId, 'yellow');
+  };
+
+  const sendOff = () => {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    giveCard(outId, 'red');
     onClose();
   };
 
@@ -58,6 +77,23 @@ export function SubSheet({ outId, onClose, color }: Props) {
           </View>
           <Pressable onPress={onClose} hitSlop={10}>
             <Text style={styles.close}>✕</Text>
+          </Pressable>
+        </View>
+
+        {/* Bookings for the tapped player. */}
+        <View style={styles.cardRow}>
+          <Pressable
+            style={[styles.cardBtn, outCard === 'yellow' && styles.cardBtnOn]}
+            onPress={toggleYellow}
+          >
+            <View style={[styles.swatch, { backgroundColor: theme.ball }]} />
+            <Text style={styles.cardText}>
+              {outCard === 'yellow' ? 'Yellow ✓' : 'Yellow'}
+            </Text>
+          </Pressable>
+          <Pressable style={styles.cardBtn} onPress={sendOff}>
+            <View style={[styles.swatch, { backgroundColor: theme.danger }]} />
+            <Text style={styles.cardText}>Red — off for good</Text>
           </Pressable>
         </View>
 
@@ -116,6 +152,22 @@ const styles = StyleSheet.create({
   title: { color: theme.text, fontSize: 20, fontWeight: '800' },
   sub: { color: theme.textDim, fontSize: 13, marginTop: 2 },
   close: { color: theme.textDim, fontSize: 18, paddingHorizontal: 4 },
+  cardRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  cardBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: radius.md,
+    backgroundColor: theme.control,
+    borderWidth: 1,
+    borderColor: theme.controlBorder,
+  },
+  cardBtnOn: { borderColor: theme.ball },
+  swatch: { width: 12, height: 16, borderRadius: 2 },
+  cardText: { color: theme.text, fontWeight: '700', fontSize: 13.5 },
   empty: { color: theme.textDim, textAlign: 'center', paddingVertical: 26, fontSize: 15 },
   scroll: { maxHeight: 380 },
   row: {

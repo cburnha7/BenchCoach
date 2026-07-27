@@ -9,6 +9,7 @@ import {
 import {
   clamp,
   makeId,
+  type Card,
   type Ghost,
   type MatchState,
   type PassArrow,
@@ -29,6 +30,7 @@ function emptyMatch(teamId: string, size: TeamSize): MatchState {
     score: { us: 0, them: 0 },
     goals: [],
     stats: {},
+    cards: {},
     scratched: [],
     queue: [],
     formationIdx: 0,
@@ -77,6 +79,8 @@ type MatchStore = {
   setJersey: (id: string, jersey: string | undefined) => void;
   setEmoji: (id: string, emoji: string | undefined) => void;
   toggleScratch: (id: string) => void;
+  giveCard: (id: string, card: Card) => void;
+  clearCard: (id: string) => void;
 
   bumpScore: (team: 'us' | 'them', delta: number) => void;
   recordGoal: (scorerId: string | null, assistId: string | null) => void;
@@ -275,11 +279,14 @@ export const useMatch = create<MatchStore>((set, get) => {
         delete minutes[id];
         const stats = { ...m.stats };
         delete stats[id];
+        const cards = { ...m.cards };
+        delete cards[id];
         return {
           ...m,
           roster: benchLayout(m.roster.filter((p) => p.id !== id)),
           minutes,
           stats,
+          cards,
           scratched: m.scratched.filter((s) => s !== id),
           queue: m.queue.filter((q) => q.out !== id && q.in !== id),
         };
@@ -323,6 +330,30 @@ export const useMatch = create<MatchStore>((set, get) => {
           ? m.scratched.filter((s) => s !== id)
           : [...m.scratched, id],
       }));
+    },
+
+    giveCard: (id, card) => {
+      patch((m) => {
+        const cards = { ...m.cards, [id]: card };
+        if (card !== 'red') return { ...m, cards };
+        // Red: off for good. Bench them and drop any queued sub they're in.
+        return {
+          ...m,
+          cards,
+          roster: benchLayout(
+            m.roster.map((p) => (p.id === id ? { ...p, onField: false } : p))
+          ),
+          queue: m.queue.filter((q) => q.out !== id && q.in !== id),
+        };
+      });
+    },
+
+    clearCard: (id) => {
+      patch((m) => {
+        const cards = { ...m.cards };
+        delete cards[id];
+        return { ...m, cards };
+      });
     },
 
     bumpScore: (team, delta) => {
@@ -376,7 +407,8 @@ export const useMatch = create<MatchStore>((set, get) => {
     },
 
     resetScore: () => {
-      patch((m) => ({ ...m, score: { us: 0, them: 0 }, goals: [] }));
+      // A new game: clear the score, the goal log, and this game's bookings.
+      patch((m) => ({ ...m, score: { us: 0, them: 0 }, goals: [], cards: {} }));
     },
 
     resetStats: () => {

@@ -164,6 +164,7 @@ export function Field({ color, trailsOn, onPlayerAction }: Props) {
               scaleY={scaleY}
               discScale={discScale}
               scratched={match.scratched.includes(p.id)}
+              card={match.cards[p.id]}
               queued={queuedIds.has(p.id)}
               hasBall={match.holder === p.id}
               onMove={movePlayer}

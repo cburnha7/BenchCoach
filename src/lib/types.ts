@@ -69,6 +69,9 @@ export type Ghost = {
 /** Per-player season tally. `g` goals, `a` assists. */
 export type PlayerStat = { g: number; a: number };
 
+/** A booking. `red` means sent off — benched for good, unavailable to sub on. */
+export type Card = 'yellow' | 'red';
+
 /**
  * One goal by our team in the current game. Kept as a log (not just a count)
  * so a goal can be removed by name and its season stats backed out with it.
@@ -91,6 +94,8 @@ export type MatchState = {
   goals: GoalEvent[];
   /** Season goal/assist tallies per player id, cleared with a season reset. */
   stats: Record<string, PlayerStat>;
+  /** Bookings this game by player id. A red also forces the player off. */
+  cards: Record<string, Card>;
   scratched: string[];
   queue: QueuedSub[];
   formationIdx: number;

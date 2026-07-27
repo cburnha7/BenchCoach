@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { theme, contrastText, rgba } from '../lib/theme';
-import { badgeLabel, type Player } from '../lib/types';
+import { badgeLabel, type Card, type Player } from '../lib/types';
 
 export const DISC_R = 30;
 /** Extra touch radius (field units) around the disc, for a generous tap area. */
@@ -27,6 +27,8 @@ type Props = {
   discScale: number;
   scratched: boolean;
   queued: boolean;
+  /** Booking to flag on the disc, if any. */
+  card?: Card;
   /** True when this player is on the ball. */
   hasBall: boolean;
   /** Committed once, on release, in field coordinates. */
@@ -52,6 +54,7 @@ function PlayerDiscBase({
   discScale,
   scratched,
   queued,
+  card,
   hasBall,
   onMove,
   onDragEnd,
@@ -210,6 +213,21 @@ function PlayerDiscBase({
               {label}
             </Text>
           </View>
+
+          {/* Booking flag, clipped to the top-right of the disc. */}
+          {card && (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.card,
+                {
+                  width: Math.max(7, 9 * discScale),
+                  height: Math.max(10, 13 * discScale),
+                  backgroundColor: card === 'red' ? theme.danger : theme.ball,
+                },
+              ]}
+            />
+          )}
         </View>
       </Animated.View>
     </GestureDetector>
@@ -238,6 +256,14 @@ const styles = StyleSheet.create({
   label: {
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  card: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.4)',
   },
 });
 

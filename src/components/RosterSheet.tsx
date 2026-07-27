@@ -26,7 +26,7 @@ import { ScanSheet } from './ScanSheet';
 import { BadgeSheet } from './BadgeSheet';
 import { StatsSheet } from './StatsSheet';
 import { useMatch } from '../store/useMatch';
-import { badgeLabel, formatClock, type Player } from '../lib/types';
+import { badgeLabel, formatClock, type Card, type Player } from '../lib/types';
 import { theme, radius, mix } from '../lib/theme';
 
 type Props = {
@@ -54,6 +54,7 @@ export function RosterSheet({ visible, onClose, teamName, color }: Props) {
   const addPlayer = useMatch((s) => s.addPlayer);
   const removePlayer = useMatch((s) => s.removePlayer);
   const toggleScratch = useMatch((s) => s.toggleScratch);
+  const clearCard = useMatch((s) => s.clearCard);
   const resetMinutes = useMatch((s) => s.resetMinutes);
 
   const confirmResetMinutes = () => {
@@ -87,38 +88,42 @@ export function RosterSheet({ visible, onClose, teamName, color }: Props) {
   const mins = (p: Player) => match.minutes[p.id] ?? 0;
   const byMinutesDesc = (a: Player, b: Player) => mins(b) - mins(a);
 
+  // Sent off (red) or scratched players sink to the bottom "out" group.
+  const isOut = (p: Player) =>
+    scratchedSet.has(p.id) || match.cards[p.id] === 'red';
+
   const field = match.roster
-    .filter((p) => p.onField && !scratchedSet.has(p.id))
+    .filter((p) => p.onField && !isOut(p))
     .sort(byMinutesDesc);
   const bench = match.roster
-    .filter((p) => !p.onField && !scratchedSet.has(p.id))
+    .filter((p) => !p.onField && !isOut(p))
     .sort(byMinutesDesc);
-  const scratched = match.roster
-    .filter((p) => scratchedSet.has(p.id))
-    .sort(byMinutesDesc);
-  const data = [...field, ...bench, ...scratched];
+  const out = match.roster.filter(isOut).sort(byMinutesDesc);
+  const data = [...field, ...bench, ...out];
 
   // Ids that start a new group, so we can nudge a little air above them.
   const firstBenchId = bench[0]?.id;
-  const firstScratchedId = scratched[0]?.id;
+  const firstOutId = out[0]?.id;
 
   const renderItem = ({ item }: { item: Player }) => {
     const isScratched = scratchedSet.has(item.id);
     const topGap =
       (item.id === firstBenchId && field.length > 0) ||
-      (item.id === firstScratchedId && field.length + bench.length > 0);
+      (item.id === firstOutId && field.length + bench.length > 0);
     return (
       <RosterRow
         player={item}
         minutes={mins(item)}
         color={color}
-        onField={item.onField && !isScratched}
+        onField={item.onField && !isOut(item)}
         scratched={isScratched}
+        card={match.cards[item.id]}
         editing={editing}
         topGap={topGap}
         onEditBadge={setBadgeFor}
         onRemove={removePlayer}
         onToggleScratch={toggleScratch}
+        onClearCard={clearCard}
       />
     );
   };
@@ -254,11 +259,13 @@ type RowProps = {
   color: string;
   onField: boolean;
   scratched: boolean;
+  card?: Card;
   editing: boolean;
   topGap: boolean;
   onEditBadge: (id: string) => void;
   onRemove: (id: string) => void;
   onToggleScratch: (id: string) => void;
+  onClearCard: (id: string) => void;
 };
 
 function RosterRow({
@@ -267,13 +274,17 @@ function RosterRow({
   color,
   onField,
   scratched,
+  card,
   editing,
   topGap,
   onEditBadge,
   onRemove,
   onToggleScratch,
+  onClearCard,
 }: RowProps) {
   const tx = useSharedValue(0);
+  const red = card === 'red';
+  const dim = scratched || red;
 
   const commitSwipe = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -343,7 +354,7 @@ function RosterRow({
                 styles.badge,
                 {
                   backgroundColor: onField ? color : theme.surfaceAlt,
-                  opacity: scratched ? 0.4 : 1,
+                  opacity: dim ? 0.4 : 1,
                 },
               ]}
             >
@@ -358,11 +369,30 @@ function RosterRow({
           </View>
 
           <Text
-            style={[styles.name, scratched && styles.scratchName]}
+            style={[
+              styles.name,
+              scratched && styles.scratchName,
+              red && styles.dimText,
+            ]}
             numberOfLines={1}
           >
             {player.name}
           </Text>
+
+          {/* Booking chip; tap to clear it while editing. */}
+          {card && (
+            <Pressable
+              disabled={!editing}
+              onPress={editing ? () => onClearCard(player.id) : undefined}
+              hitSlop={8}
+              style={[
+                styles.cardChip,
+                { backgroundColor: card === 'red' ? theme.danger : theme.ball },
+              ]}
+            >
+              {editing && <Text style={styles.cardChipX}>×</Text>}
+            </Pressable>
+          )}
 
           {editing ? (
             <Pressable
@@ -373,7 +403,7 @@ function RosterRow({
               <Text style={styles.delText}>🗑</Text>
             </Pressable>
           ) : (
-            <Text style={[styles.mins, scratched && styles.dim]}>
+            <Text style={[styles.mins, dim && styles.dim]}>
               {formatClock(minutes)}
             </Text>
           )}
@@ -536,7 +566,18 @@ const styles = StyleSheet.create({
     color: theme.textDim,
     textDecorationLine: 'line-through',
   },
+  dimText: { color: theme.textDim },
   dim: { opacity: 0.5 },
+  cardChip: {
+    width: 15,
+    height: 20,
+    borderRadius: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.3)',
+  },
+  cardChipX: { color: '#000', fontSize: 13, fontWeight: '900', lineHeight: 14 },
   mins: {
     color: theme.text,
     fontSize: 16,
