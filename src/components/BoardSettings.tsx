@@ -109,7 +109,7 @@ export function BoardSettings({
             pass to them
           </Text>
           <Text style={styles.legendRow}>
-            <Text style={styles.legendKey}>Tap</Text>  subs, number, scratch
+            <Text style={styles.legendKey}>Tap</Text>  Sub
           </Text>
           <Text style={styles.legendRow}>
             <Text style={styles.legendKey}>Hold and drag</Text>  move a player

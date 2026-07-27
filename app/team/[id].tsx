@@ -82,7 +82,9 @@ export default function TeamScreen() {
   return (
     <View style={styles.screen}>
       <MatchBackdrop />
-      <Stack.Screen options={{ title: team.name }} />
+      {/* Back label defaults to the previous screen's title ("Bench Coach"),
+          which competed with the team name. Force the short, quiet "Back". */}
+      <Stack.Screen options={{ title: team.name, headerBackTitle: 'Back' }} />
 
       {!wide && <ClockBar />}
 

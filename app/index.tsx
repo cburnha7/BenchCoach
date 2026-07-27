@@ -240,18 +240,17 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.bg },
+  // Idle "Edit" is a plain text action (a pill here double-ringed against the
+  // transparent header). Only the active "Done" state fills into a pill.
   editBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     borderRadius: radius.pill,
-    backgroundColor: theme.control,
-    borderWidth: 1,
-    borderColor: theme.controlBorder,
   },
-  editBtnOn: { backgroundColor: theme.text, borderColor: theme.text },
-  editPressed: { opacity: 0.75 },
-  editBtnText: { color: theme.text, fontSize: 14, fontWeight: '700' },
-  editBtnTextOn: { color: theme.bg },
+  editBtnOn: { paddingHorizontal: 14, backgroundColor: theme.text },
+  editPressed: { opacity: 0.6 },
+  editBtnText: { color: theme.text, fontSize: 16, fontWeight: '600' },
+  editBtnTextOn: { color: theme.bg, fontWeight: '700' },
   editPill: {
     paddingHorizontal: 14,
     paddingVertical: 8,
