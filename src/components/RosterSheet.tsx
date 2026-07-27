@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -55,26 +54,6 @@ export function RosterSheet({ visible, onClose, teamName, color }: Props) {
   const removePlayer = useMatch((s) => s.removePlayer);
   const toggleScratch = useMatch((s) => s.toggleScratch);
   const clearCard = useMatch((s) => s.clearCard);
-  const resetMinutes = useMatch((s) => s.resetMinutes);
-  const resetCards = useMatch((s) => s.resetCards);
-
-  const confirmResetMinutes = () => {
-    Alert.alert(
-      'Reset for a new game?',
-      'Sets every player’s minutes back to 0 and clears all yellow and red cards.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: () => {
-            resetMinutes();
-            resetCards();
-          },
-        },
-      ]
-    );
-  };
 
   const [name, setName] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -170,13 +149,6 @@ export function RosterSheet({ visible, onClose, teamName, color }: Props) {
             <Text style={[styles.editText, editing && styles.editTextOn]}>
               {editing ? 'Done' : 'Edit'}
             </Text>
-          </Pressable>
-          <Pressable
-            onPress={confirmResetMinutes}
-            hitSlop={10}
-            style={[styles.resetBtn, styles.editBtnGap]}
-          >
-            <Text style={styles.resetText}>Reset</Text>
           </Pressable>
         </View>
 
@@ -445,15 +417,6 @@ const styles = StyleSheet.create({
   editBtnGap: { marginLeft: 8 },
   editBtnOn: { backgroundColor: theme.text, borderColor: theme.text },
   editText: { color: theme.text, fontWeight: '700', fontSize: 14 },
-  // The most prominent control in the header: a solid fill against the outline
-  // Stats/Edit pills, since a coach resets playing time every game.
-  resetBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
-    backgroundColor: theme.queued,
-  },
-  resetText: { color: theme.bg, fontWeight: '800', fontSize: 14 },
   editTextOn: { color: theme.bg },
   scanBtn: {
     flexDirection: 'row',

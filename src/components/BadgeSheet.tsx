@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   keyText: { color: theme.text, fontSize: 20, fontWeight: '700' },
   keyGo: { backgroundColor: theme.live },
   keyGoText: { color: theme.onAccent, fontSize: 16, fontWeight: '800' },
-  emojiScroll: { maxHeight: 240 },
+  emojiScroll: { maxHeight: 360 },
   emojiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   emojiBtn: {
     width: '22.5%',
