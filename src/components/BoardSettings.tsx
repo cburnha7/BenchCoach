@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { FormationPicker } from './FormationPicker';
 import { useMatch } from '../store/useMatch';
 import { theme, radius } from '../lib/theme';
 
@@ -22,7 +23,7 @@ export function BoardSettings({
 }: Props) {
   const match = useMatch((s) => s.match);
   const toggleOpponent = useMatch((s) => s.toggleOpponent);
-  const resetOpponent = useMatch((s) => s.resetOpponent);
+  const setOpponentFormation = useMatch((s) => s.setOpponentFormation);
 
   if (!match) return null;
 
@@ -54,9 +55,14 @@ export function BoardSettings({
         </View>
 
         {match.opponent.on && (
-          <Pressable style={styles.action} onPress={resetOpponent}>
-            <Text style={styles.actionText}>Reset opponent shape</Text>
-          </Pressable>
+          <View style={styles.oppFormation}>
+            <FormationPicker
+              size={match.size}
+              index={match.opponent.formationIdx}
+              onSelect={setOpponentFormation}
+              title="Opponent formation"
+            />
+          </View>
         )}
 
         <View style={styles.row}>
@@ -125,16 +131,7 @@ const styles = StyleSheet.create({
   rowMain: { flex: 1 },
   rowLabel: { color: theme.text, fontSize: 16, fontWeight: '600' },
   rowHint: { color: theme.textDim, fontSize: 12.5, marginTop: 3 },
-  action: {
-    marginTop: 12,
-    paddingVertical: 13,
-    borderRadius: radius.md,
-    backgroundColor: theme.control,
-    borderWidth: 1,
-    borderColor: theme.controlBorder,
-    alignItems: 'center',
-  },
-  actionText: { color: theme.text, fontWeight: '700', fontSize: 15 },
+  oppFormation: { marginTop: 12 },
   legend: {
     marginTop: 16,
     padding: 14,

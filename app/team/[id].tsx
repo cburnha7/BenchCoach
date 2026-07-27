@@ -49,12 +49,14 @@ export default function TeamScreen() {
   const runAllQueued = useMatch((s) => s.runAllQueued);
   const applyFormation = useMatch((s) => s.applyFormation);
   const clearBoard = useMatch((s) => s.clearBoard);
+  const resetOpponent = useMatch((s) => s.resetOpponent);
 
-  // Reset the board: everyone back to their formation slot, and wipe the
-  // passes and run trails drawn on top.
+  // Reset the board: our players back to their formation slots, the opponent
+  // shape back to its mirror, and the passes/run trails wiped.
   const resetField = () => {
     applyFormation();
     clearBoard();
+    resetOpponent();
   };
 
   const [rosterOpen, setRosterOpen] = useState(false);

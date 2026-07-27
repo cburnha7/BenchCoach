@@ -20,6 +20,8 @@ type Props = {
    * the whole row for the sake of a short formation name.
    */
   inline?: boolean;
+  /** Heading in the picker sheet. Defaults to "Formation". */
+  title?: string;
 };
 
 /**
@@ -32,6 +34,7 @@ export function FormationPicker({
   index,
   onSelect,
   inline = false,
+  title = 'Formation',
 }: Props) {
   const [open, setOpen] = useState(false);
   const formations = FORMATIONS[size];
@@ -73,7 +76,7 @@ export function FormationPicker({
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
         <View style={styles.sheet}>
           <View style={styles.grip} />
-          <Text style={styles.title}>Formation</Text>
+          <Text style={styles.title}>{title}</Text>
           <Text style={styles.sub}>
             {formations.length} shapes for {size}v{size}
           </Text>
