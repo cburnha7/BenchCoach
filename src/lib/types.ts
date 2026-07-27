@@ -69,6 +69,17 @@ export type Ghost = {
 /** Per-player season tally. `g` goals, `a` assists. */
 export type PlayerStat = { g: number; a: number };
 
+/**
+ * One goal by our team in the current game. Kept as a log (not just a count)
+ * so a goal can be removed by name and its season stats backed out with it.
+ * `scorerId`/`assistId` are null when the goal was added without attribution.
+ */
+export type GoalEvent = {
+  id: string;
+  scorerId: string | null;
+  assistId: string | null;
+};
+
 export type MatchState = {
   teamId: string;
   size: TeamSize;
@@ -76,6 +87,8 @@ export type MatchState = {
   minutes: Record<string, number>;
   /** Current game score. `us` is this team, `them` the opponent. */
   score: { us: number; them: number };
+  /** Our goals this game, in order scored. Length tracks `score.us`. */
+  goals: GoalEvent[];
   /** Season goal/assist tallies per player id, cleared with a season reset. */
   stats: Record<string, PlayerStat>;
   scratched: string[];

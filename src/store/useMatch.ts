@@ -27,6 +27,7 @@ function emptyMatch(teamId: string, size: TeamSize): MatchState {
     roster: [],
     minutes: {},
     score: { us: 0, them: 0 },
+    goals: [],
     stats: {},
     scratched: [],
     queue: [],
@@ -78,7 +79,8 @@ type MatchStore = {
   toggleScratch: (id: string) => void;
 
   bumpScore: (team: 'us' | 'them', delta: number) => void;
-  recordGoal: (scorerId: string, assistId: string | null) => void;
+  recordGoal: (scorerId: string | null, assistId: string | null) => void;
+  removeGoal: (goalId: string) => void;
   resetScore: () => void;
   resetStats: () => void;
 
@@ -332,18 +334,48 @@ export const useMatch = create<MatchStore>((set, get) => {
     recordGoal: (scorerId, assistId) => {
       patch((m) => {
         const stats = { ...m.stats };
-        const s = stats[scorerId] ?? { g: 0, a: 0 };
-        stats[scorerId] = { g: s.g + 1, a: s.a };
+        if (scorerId) {
+          const s = stats[scorerId] ?? { g: 0, a: 0 };
+          stats[scorerId] = { g: s.g + 1, a: s.a };
+        }
         if (assistId && assistId !== scorerId) {
           const a = stats[assistId] ?? { g: 0, a: 0 };
           stats[assistId] = { g: a.g, a: a.a + 1 };
         }
-        return { ...m, score: { ...m.score, us: m.score.us + 1 }, stats };
+        const goal = { id: makeId('goal'), scorerId, assistId };
+        return {
+          ...m,
+          score: { ...m.score, us: m.score.us + 1 },
+          goals: [...m.goals, goal],
+          stats,
+        };
+      });
+    },
+
+    removeGoal: (goalId) => {
+      patch((m) => {
+        const goal = m.goals.find((g) => g.id === goalId);
+        if (!goal) return m;
+        const stats = { ...m.stats };
+        if (goal.scorerId && stats[goal.scorerId]) {
+          const s = stats[goal.scorerId];
+          stats[goal.scorerId] = { g: Math.max(0, s.g - 1), a: s.a };
+        }
+        if (goal.assistId && goal.assistId !== goal.scorerId && stats[goal.assistId]) {
+          const a = stats[goal.assistId];
+          stats[goal.assistId] = { g: a.g, a: Math.max(0, a.a - 1) };
+        }
+        return {
+          ...m,
+          score: { ...m.score, us: Math.max(0, m.score.us - 1) },
+          goals: m.goals.filter((g) => g.id !== goalId),
+          stats,
+        };
       });
     },
 
     resetScore: () => {
-      patch((m) => ({ ...m, score: { us: 0, them: 0 } }));
+      patch((m) => ({ ...m, score: { us: 0, them: 0 }, goals: [] }));
     },
 
     resetStats: () => {

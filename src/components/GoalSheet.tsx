@@ -25,7 +25,6 @@ type Props = {
 export function GoalSheet({ visible, onClose, color }: Props) {
   const match = useMatch((s) => s.match);
   const recordGoal = useMatch((s) => s.recordGoal);
-  const bumpScore = useMatch((s) => s.bumpScore);
 
   const [scorer, setScorer] = useState<string | null>(null);
   const [assist, setAssist] = useState<string | null>(null);
@@ -73,7 +72,7 @@ export function GoalSheet({ visible, onClose, color }: Props) {
   };
 
   const justAdd = () => {
-    bumpScore('us', 1);
+    recordGoal(null, null);
     onClose();
   };
 

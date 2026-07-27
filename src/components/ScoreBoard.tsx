@@ -8,6 +8,8 @@ type Props = {
   color: string;
   /** Us scored — opens the goal sheet to attribute the scorer/assist. */
   onAddUs: () => void;
+  /** Us minus — opens the list of this game's goals to remove one. */
+  onRemoveUs: () => void;
 };
 
 /**
@@ -16,7 +18,7 @@ type Props = {
  * just nudge the number; Us's plus goes through the goal sheet so the goal is
  * credited to a player. Long-press either score to reset the game to 0–0.
  */
-export function ScoreBoard({ color, onAddUs }: Props) {
+export function ScoreBoard({ color, onAddUs, onRemoveUs }: Props) {
   const match = useMatch((s) => s.match);
   const bumpScore = useMatch((s) => s.bumpScore);
   const resetScore = useMatch((s) => s.resetScore);
@@ -29,22 +31,22 @@ export function ScoreBoard({ color, onAddUs }: Props) {
   };
 
   const Stepper = ({
-    side,
     label,
     value,
     accent,
+    onMinus,
     onPlus,
   }: {
-    side: 'them' | 'us';
     label: string;
     value: number;
     accent?: string;
+    onMinus: () => void;
     onPlus: () => void;
   }) => (
     <View style={styles.block}>
       <Pressable
         style={({ pressed }) => [styles.step, pressed && styles.pressed]}
-        onPress={() => bumpScore(side, -1)}
+        onPress={onMinus}
         hitSlop={6}
       >
         <Text style={styles.stepText}>−</Text>
@@ -74,17 +76,17 @@ export function ScoreBoard({ color, onAddUs }: Props) {
   return (
     <View style={styles.bar}>
       <Stepper
-        side="them"
         label="THEM"
         value={match.score.them}
+        onMinus={() => bumpScore('them', -1)}
         onPlus={() => bumpScore('them', 1)}
       />
       <View style={styles.divider} />
       <Stepper
-        side="us"
         label="US"
         value={match.score.us}
         accent={color}
+        onMinus={onRemoveUs}
         onPlus={onAddUs}
       />
     </View>

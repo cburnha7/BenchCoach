@@ -15,6 +15,7 @@ import { FormationPicker } from '../../src/components/FormationPicker';
 import { BoardSettings } from '../../src/components/BoardSettings';
 import { ScoreBoard } from '../../src/components/ScoreBoard';
 import { GoalSheet } from '../../src/components/GoalSheet';
+import { GoalLogSheet } from '../../src/components/GoalLogSheet';
 import { RosterSheet } from '../../src/components/RosterSheet';
 import { SubSheet } from '../../src/components/SubSheet';
 import { BadgeSheet } from '../../src/components/BadgeSheet';
@@ -62,6 +63,7 @@ export default function TeamScreen() {
   const [actionFor, setActionFor] = useState<string | null>(null);
   const [badgeFor, setBadgeFor] = useState<string | null>(null);
   const [goalOpen, setGoalOpen] = useState(false);
+  const [goalLogOpen, setGoalLogOpen] = useState(false);
   const [trailsOn, setTrailsOn] = useState(false);
 
   useEffect(() => {
@@ -172,7 +174,13 @@ export default function TeamScreen() {
 
       <Field color={color} trailsOn={trailsOn} onPlayerAction={setActionFor} />
 
-      {ready && <ScoreBoard color={color} onAddUs={() => setGoalOpen(true)} />}
+      {ready && (
+        <ScoreBoard
+          color={color}
+          onAddUs={() => setGoalOpen(true)}
+          onRemoveUs={() => setGoalLogOpen(true)}
+        />
+      )}
 
       {!wide && (
         <View
@@ -246,6 +254,11 @@ export default function TeamScreen() {
       <GoalSheet
         visible={goalOpen}
         onClose={() => setGoalOpen(false)}
+        color={color}
+      />
+      <GoalLogSheet
+        visible={goalLogOpen}
+        onClose={() => setGoalLogOpen(false)}
         color={color}
       />
     </View>
