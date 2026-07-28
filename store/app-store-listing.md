@@ -50,13 +50,14 @@ PRIVATE BY DESIGN
 Built by a coach, for coaches. One-time purchase — no subscription.
 
 ## Support URL (required)
-<add a page or link — e.g. a GitHub page or mailto redirect>
+https://github.com/cburnha7/BenchCoach
+(or set up a dedicated page later — Apple just needs a reachable link)
 
 ## Marketing URL (optional)
 <optional>
 
 ## Privacy Policy URL (required)
-<host privacy/index.html publicly — see notes below>
+https://cburnha7.github.io/BenchCoach/   ✅ live
 
 ## Category
 Primary: Sports
