@@ -51,12 +51,14 @@ export default function Home() {
     void hydrate();
   }, [hydrate]);
 
-  // No card taller than a third of the list; past three teams they share the
-  // space evenly (1/4 for four, 1/5 for five).
+  // Cards divide the list area evenly so they always fit with no scrolling:
+  // full height for one team, halves for two, thirds for three, and so on.
   const rows = Math.min(Math.max(teams.length, 1), MAX_TEAMS);
+  const padTop = 12;
+  const padBottom = editing ? 12 : insets.bottom + 12;
   const cardH =
     listH > 0
-      ? Math.min(listH / 3, (listH - GAP * (rows - 1)) / rows)
+      ? (listH - padTop - padBottom - GAP * (rows - 1)) / rows
       : 180;
   const atMax = teams.length >= MAX_TEAMS;
   // Add lives on the empty state, and otherwise only in edit mode.
@@ -176,8 +178,8 @@ export default function Home() {
             renderItem={renderTeam}
             cardHeight={cardH}
             gap={GAP}
-            paddingTop={12}
-            paddingBottom={12}
+            paddingTop={padTop}
+            paddingBottom={padBottom}
           />
         )}
       </View>

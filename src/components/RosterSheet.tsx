@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -54,6 +55,18 @@ export function RosterSheet({ visible, onClose, teamName, color }: Props) {
   const removePlayer = useMatch((s) => s.removePlayer);
   const toggleScratch = useMatch((s) => s.toggleScratch);
   const clearCard = useMatch((s) => s.clearCard);
+  const resetMinutes = useMatch((s) => s.resetMinutes);
+
+  const confirmResetMinutes = () => {
+    Alert.alert(
+      'Reset playing time?',
+      'Sets every player’s minutes back to 0.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Reset', style: 'destructive', onPress: () => resetMinutes() },
+      ]
+    );
+  };
 
   const [name, setName] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -149,6 +162,13 @@ export function RosterSheet({ visible, onClose, teamName, color }: Props) {
             <Text style={[styles.editText, editing && styles.editTextOn]}>
               {editing ? 'Done' : 'Edit'}
             </Text>
+          </Pressable>
+          <Pressable
+            onPress={confirmResetMinutes}
+            hitSlop={10}
+            style={[styles.editBtn, styles.editBtnGap]}
+          >
+            <Text style={styles.editText}>Reset</Text>
           </Pressable>
         </View>
 
