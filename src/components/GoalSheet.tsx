@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useMatch } from '../store/useMatch';
-import { badgeLabel, firstName, type Player } from '../lib/types';
+import { badgeLabel, type Player } from '../lib/types';
 import { theme, radius, glass } from '../lib/theme';
 
 type Props = {
@@ -84,7 +84,7 @@ export function GoalSheet({ visible, onClose, color }: Props) {
         key={p.id}
         onPress={() => onTap(p.id)}
         style={[
-          styles.chip,
+          styles.row,
           isScorer && { borderColor: theme.live, backgroundColor: theme.surfaceAlt },
           isAssist && { borderColor: theme.ball, backgroundColor: theme.surfaceAlt },
         ]}
@@ -93,7 +93,7 @@ export function GoalSheet({ visible, onClose, color }: Props) {
           <Text style={styles.badgeText}>{badgeLabel(p)}</Text>
         </View>
         <Text style={styles.name} numberOfLines={1}>
-          {firstName(p.name)}
+          {p.name}
         </Text>
         {isScorer && <Text style={[styles.tag, { color: theme.live }]}>GOAL</Text>}
         {isAssist && <Text style={[styles.tag, { color: theme.ball }]}>ASSIST</Text>}
@@ -111,7 +111,7 @@ export function GoalSheet({ visible, onClose, color }: Props) {
         {players.length === 0 ? (
           <Text style={styles.empty}>No players on the field.</Text>
         ) : (
-          <ScrollView style={styles.scroll} contentContainerStyle={styles.grid}>
+          <ScrollView style={styles.scroll}>
             {players.map(chip)}
           </ScrollView>
         )}
@@ -149,30 +149,29 @@ const styles = StyleSheet.create({
   title: { color: theme.text, fontSize: 20, fontWeight: '800' },
   sub: { color: theme.textDim, fontSize: 13, marginTop: 2, marginBottom: 14 },
   empty: { color: theme.textDim, fontSize: 15, paddingVertical: 24, textAlign: 'center' },
-  scroll: { maxHeight: 340 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
+  scroll: { maxHeight: 400 },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    paddingLeft: 8,
-    paddingRight: 12,
-    borderRadius: radius.pill,
+    gap: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+    borderRadius: radius.md,
     backgroundColor: theme.control,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   badge: {
-    width: 30,
-    height: 30,
+    width: 34,
+    height: 34,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeText: { color: theme.onAccent, fontWeight: '800', fontSize: 13 },
-  name: { color: theme.text, fontSize: 15, fontWeight: '600', maxWidth: 120 },
-  tag: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  badgeText: { color: theme.onAccent, fontWeight: '800', fontSize: 14 },
+  name: { flex: 1, color: theme.text, fontSize: 16, fontWeight: '600' },
+  tag: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 16 },
   ghost: {
     paddingHorizontal: 18,
