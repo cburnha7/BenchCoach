@@ -87,7 +87,7 @@ function Row({
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
-  const clamp = (v: number) => Math.max(0, Math.min(count - 1, v));
+  const last = count - 1;
 
   const pan = Gesture.Pan()
     .enabled(editing)
@@ -101,7 +101,9 @@ function Row({
       dragY.value = e.translationY;
     })
     .onEnd(() => {
-      const target = clamp(Math.round((index * STRIDE + dragY.value) / STRIDE));
+      // Clamp inline — a worklet can't call a plain JS helper.
+      const raw = Math.round((index * STRIDE + dragY.value) / STRIDE);
+      const target = Math.max(0, Math.min(last, raw));
       if (target !== index) runOnJS(onReorder)(index, target);
       dragIndex.value = -1;
       dragY.value = 0;
@@ -121,8 +123,9 @@ function Row({
       return { transform: [{ translateY: index * STRIDE }, { scale: 1 }], zIndex: 1 };
     }
     // Another card is being dragged — shift to open a gap for its target slot.
+    const raw = Math.round((d * STRIDE + dragY.value) / STRIDE);
+    const target = Math.max(0, Math.min(last, raw));
     let slot = index;
-    const target = clamp(Math.round((d * STRIDE + dragY.value) / STRIDE));
     if (d < index && target >= index) slot = index - 1;
     else if (d > index && target <= index) slot = index + 1;
     return {
