@@ -14,9 +14,9 @@ import { badgeLabel, type Card, type Player } from '../lib/types';
 
 export const DISC_R = 30;
 /** Extra touch radius (field units) around the disc, for a generous tap area. */
-const TAP_PAD = 14;
-/** Movement (field units) under which a hold-release counts as a tap, not a drag. */
-const TAP_SLOP = 7;
+const TAP_PAD = 22;
+/** Min spacing (field units) between recorded points on the drag trail. */
+const SAMPLE_DIST = 16;
 
 type Props = {
   player: Player;
@@ -35,12 +35,13 @@ type Props = {
   hasBall: boolean;
   /** Committed once, on release, in field coordinates. */
   onMove: (id: string, x: number, y: number) => void;
-  /** Called on release with where the drag began, so a trail can be drawn. */
+  /** Called on release with the drag's start, end, and sampled path. */
   onDragEnd: (
     id: string,
     origin: { x: number; y: number },
     to: { x: number; y: number },
-    carriedBall: boolean
+    carriedBall: boolean,
+    points: { x: number; y: number }[]
   ) => void;
   /** Double tap: take the ball, or receive a pass from the current holder. */
   onDoubleTap: (id: string) => void;
@@ -70,6 +71,8 @@ function PlayerDiscBase({
   // Drag origin, captured on start so the trail knows where the run began.
   const originX = useSharedValue(player.x);
   const originY = useSharedValue(player.y);
+  // Sampled drag path (flattened x,y,x,y…) for a curved trail.
+  const pts = useSharedValue<number[]>([]);
 
   // Snap to the stored position instantly. A spring here overshot on Reset —
   // players slingshot past their slots before settling — which read as a bug.
@@ -96,42 +99,48 @@ function PlayerDiscBase({
 
   /*
    * Gesture model, matching the original app:
-   *   hold then drag  — move the player
-   *   double tap      — give the ball, or play a pass to them
-   *   single tap      — open the action sheet (subs, cards)
+   *   drag       — move the player (activates the moment the finger travels,
+   *                so no hold needed — that was the "had to try several times")
+   *   double tap — give the ball, or play a pass to them
+   *   single tap — open the action sheet (subs, cards)
    *
-   * Reliability of the single tap is the priority: it has no duration cap, and
-   * a hold that ends without moving falls back to a tap (see pan.onEnd) so a
-   * lingering press is never lost. The tap waits only the short double-tap
-   * window before firing, which is what makes both work on one target.
+   * Pan activates on movement (minDistance), so a still finger is always a tap
+   * and the two never fight. The trail records the path the finger took.
    */
   const pan = Gesture.Pan()
-    .activateAfterLongPress(200)
+    .minDistance(10)
     .onStart(() => {
       originX.value = x.value;
       originY.value = y.value;
+      pts.value = [x.value, y.value];
       pressed.value = withTiming(1, { duration: 120 });
       runOnJS(buzz)();
     })
     .onChange((e) => {
-      x.value += e.changeX / scaleX;
-      y.value += e.changeY / scaleY;
+      // Absolute from the origin so the disc never lags the finger.
+      x.value = originX.value + e.translationX / scaleX;
+      y.value = originY.value + e.translationY / scaleY;
+      const arr = pts.value;
+      const dx = x.value - arr[arr.length - 2];
+      const dy = y.value - arr[arr.length - 1];
+      if (dx * dx + dy * dy >= SAMPLE_DIST * SAMPLE_DIST) {
+        pts.value = [...arr, x.value, y.value];
+      }
     })
     .onEnd(() => {
       pressed.value = withTiming(0, { duration: 160 });
-      // A hold that never moved is a tap the pan happened to swallow — open the
-      // action sheet instead of committing a no-op "move".
-      const moved = Math.hypot(x.value - originX.value, y.value - originY.value);
-      if (moved < TAP_SLOP) {
-        runOnJS(onTap)(player.id);
-        return;
+      const flat = [...pts.value, x.value, y.value];
+      const pairs: { x: number; y: number }[] = [];
+      for (let i = 0; i < flat.length; i += 2) {
+        pairs.push({ x: flat[i], y: flat[i + 1] });
       }
       runOnJS(onMove)(player.id, x.value, y.value);
       runOnJS(onDragEnd)(
         player.id,
         { x: originX.value, y: originY.value },
         { x: x.value, y: y.value },
-        hasBall
+        hasBall,
+        pairs
       );
     });
 

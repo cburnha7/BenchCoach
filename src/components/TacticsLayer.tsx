@@ -66,6 +66,24 @@ function shaft(
   return { path, mid: { x: (x1 + x2) / 2, y: (y1 + y2) / 2 } };
 }
 
+/** A smooth path through the sampled drag points (quadratics via midpoints). */
+function curvePath(points: { x: number; y: number }[]) {
+  const path = Skia.Path.Make();
+  path.moveTo(points[0].x, points[0].y);
+  if (points.length === 2) {
+    path.lineTo(points[1].x, points[1].y);
+    return path;
+  }
+  for (let i = 1; i < points.length - 1; i++) {
+    const mx = (points[i].x + points[i + 1].x) / 2;
+    const my = (points[i].y + points[i + 1].y) / 2;
+    path.quadTo(points[i].x, points[i].y, mx, my);
+  }
+  const last = points[points.length - 1];
+  path.lineTo(last.x, last.y);
+  return path;
+}
+
 function TacticsLayerBase({
   arrows,
   ghosts,
@@ -89,8 +107,12 @@ function TacticsLayerBase({
     () =>
       ghosts
         .map((g) => {
+          // Follow the finger when we have a sampled path; else a straight run.
+          if (g.points && g.points.length >= 3) {
+            return { ...g, path: curvePath(g.points) };
+          }
           const s = shaft(g.origin, g.to);
-          return s ? { ...g, ...s } : null;
+          return s ? { ...g, path: s.path } : null;
         })
         .filter((g): g is NonNullable<typeof g> => g !== null),
     [ghosts]

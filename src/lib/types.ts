@@ -65,6 +65,8 @@ export type Ghost = {
   label: string;
   origin: { x: number; y: number };
   to: { x: number; y: number };
+  /** Sampled points the finger travelled through, for a curved trail. */
+  points?: { x: number; y: number }[];
   carry: boolean;
   opponent: boolean;
 };

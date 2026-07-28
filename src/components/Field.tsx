@@ -56,13 +56,21 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
       id: string,
       origin: { x: number; y: number },
       to: { x: number; y: number },
-      carriedBall: boolean
+      carriedBall: boolean,
+      points: { x: number; y: number }[]
     ) => {
       if (!trailsOn) return;
       const dist = Math.hypot(to.x - origin.x, to.y - origin.y);
       if (dist < TRAIL_MIN_DISTANCE) return;
       const player = useMatch.getState().match?.roster.find((p) => p.id === id);
-      addGhost(player ? firstName(player.name) : '', origin, to, carriedBall, false);
+      addGhost(
+        player ? firstName(player.name) : '',
+        origin,
+        to,
+        carriedBall,
+        false,
+        points
+      );
     },
     [trailsOn, addGhost]
   );

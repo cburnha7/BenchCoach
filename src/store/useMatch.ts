@@ -112,7 +112,8 @@ type MatchStore = {
     origin: { x: number; y: number },
     to: { x: number; y: number },
     carry: boolean,
-    opponent: boolean
+    opponent: boolean,
+    points?: { x: number; y: number }[]
   ) => void;
   clearGhosts: () => void;
 
@@ -641,12 +642,13 @@ export const useMatch = create<MatchStore>((set, get) => {
       patch((m) => ({ ...m, arrows: [], ghosts: [], holder: null }), false);
     },
 
-    addGhost: (label, origin, to, carry, opponent) => {
+    addGhost: (label, origin, to, carry, opponent, points) => {
       const ghost: Ghost = {
         id: makeId('g'),
         label,
         origin,
         to,
+        points,
         carry,
         opponent,
       };
