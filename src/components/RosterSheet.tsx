@@ -56,14 +56,22 @@ export function RosterSheet({ visible, onClose, teamName, color }: Props) {
   const toggleScratch = useMatch((s) => s.toggleScratch);
   const clearCard = useMatch((s) => s.clearCard);
   const resetMinutes = useMatch((s) => s.resetMinutes);
+  const resetCards = useMatch((s) => s.resetCards);
 
   const confirmResetMinutes = () => {
     Alert.alert(
-      'Reset playing time?',
-      'Sets every player’s minutes back to 0.',
+      'Reset for a new game?',
+      'Sets every player’s minutes back to 0 and clears all yellow and red cards.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Reset', style: 'destructive', onPress: () => resetMinutes() },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            resetMinutes();
+            resetCards();
+          },
+        },
       ]
     );
   };
