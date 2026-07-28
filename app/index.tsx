@@ -59,6 +59,8 @@ export default function Home() {
       ? Math.min(listH / 3, (listH - GAP * (rows - 1)) / rows)
       : 180;
   const atMax = teams.length >= MAX_TEAMS;
+  // Add lives on the empty state, and otherwise only in edit mode.
+  const showAdd = teams.length === 0 || (editing && !atMax);
 
   const create = async () => {
     const id = await addTeam({ name, size, color });
@@ -104,6 +106,9 @@ export default function Home() {
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
+
+      {/* Edit mode mutes the cards so the Edit affordance reads. */}
+      {editing && <View pointerEvents="none" style={styles.editScrim} />}
 
       <View style={styles.cardInner}>
         <Text style={styles.cardName} numberOfLines={1}>
@@ -177,7 +182,7 @@ export default function Home() {
         )}
       </View>
 
-      {!atMax && (
+      {showAdd && (
         <Pressable
           style={[styles.addTeam, { marginBottom: insets.bottom + 12 }]}
           onPress={() => setCreating(true)}
@@ -274,6 +279,10 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   cardPressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
+  editScrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(110,116,128,0.45)',
+  },
   cardInner: { flex: 1, justifyContent: 'flex-end', padding: 18 },
   cardName: {
     color: '#ffffff',

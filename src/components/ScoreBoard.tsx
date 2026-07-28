@@ -147,9 +147,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepAdd: { backgroundColor: theme.live, borderColor: theme.live },
+  stepAdd: { backgroundColor: theme.control, borderColor: theme.controlBorder },
   stepText: { color: theme.text, fontSize: 20, fontWeight: '700', lineHeight: 22 },
-  stepAddText: { color: theme.onAccent },
+  stepAddText: { color: theme.text },
   pressed: { opacity: 0.7 },
   center: { alignItems: 'center', paddingHorizontal: 6 },
   label: {

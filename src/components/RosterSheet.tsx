@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: radius.pill,
-    backgroundColor: theme.live,
+    backgroundColor: theme.textDim,
     borderWidth: 1.5,
     borderColor: theme.bg,
     alignItems: 'center',
