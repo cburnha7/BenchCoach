@@ -207,7 +207,8 @@ function PlayerDiscBase({
                 style={[
                   styles.emoji,
                   {
-                    fontSize: Math.round(discSize * 1.3),
+                    // Sized to the disc so the glyph stays inside the tap box.
+                    fontSize: Math.round(discSize * 0.9),
                     opacity: scratched ? 0.45 : 1,
                   },
                 ]}

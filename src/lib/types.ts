@@ -23,6 +23,13 @@ export type Player = {
   onField: boolean;
   x: number;
   y: number;
+  /**
+   * The spot Reset returns them to — where they were placed (formation slot or
+   * the slot of whoever they subbed on for), before any dragging. Dragging
+   * moves x/y but never home.
+   */
+  homeX?: number;
+  homeY?: number;
   /** Jersey number, stored as a string so "07" survives. */
   jersey?: string;
   emoji?: string;

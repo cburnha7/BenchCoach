@@ -93,6 +93,7 @@ type MatchStore = {
   movePlayer: (id: string, x: number, y: number) => void;
   setFormation: (idx: number) => void;
   applyFormation: () => void;
+  resetPositions: () => void;
 
   swap: (outId: string, inId: string) => void;
   sendToBench: (id: string) => void;
@@ -167,7 +168,12 @@ export const useMatch = create<MatchStore>((set, get) => {
         ghosts: [],
         holder: null,
       };
-      // Backfill minute entries for any player missing one.
+      // Backfill minute entries and home spots for older saved players.
+      match.roster = match.roster.map((p) => ({
+        ...p,
+        homeX: p.homeX ?? p.x,
+        homeY: p.homeY ?? p.y,
+      }));
       match.roster.forEach((p) => {
         if (match.minutes[p.id] == null) match.minutes[p.id] = 0;
       });
@@ -269,6 +275,8 @@ export const useMatch = create<MatchStore>((set, get) => {
           onField: goOn,
           x,
           y,
+          homeX: x,
+          homeY: y,
         };
         const roster = benchLayout([...m.roster, player]);
         return {
@@ -444,6 +452,8 @@ export const useMatch = create<MatchStore>((set, get) => {
     },
 
     applyFormation: () => {
+      // Picking a formation defines the home layout: on-field players take the
+      // slots in order and those become their Reset positions.
       patch((m) => {
         const slots = FORMATIONS[m.size][m.formationIdx].slots;
         let i = 0;
@@ -451,10 +461,24 @@ export const useMatch = create<MatchStore>((set, get) => {
           if (!p.onField) return p;
           const slot = slots[i];
           i += 1;
-          return slot ? { ...p, x: slot.x, y: slot.y } : p;
+          return slot
+            ? { ...p, x: slot.x, y: slot.y, homeX: slot.x, homeY: slot.y }
+            : p;
         });
         return { ...m, roster };
       });
+    },
+
+    /** Put every on-field player back on their home spot (pre-drag). */
+    resetPositions: () => {
+      patch((m) => ({
+        ...m,
+        roster: m.roster.map((p) =>
+          p.onField
+            ? { ...p, x: p.homeX ?? p.x, y: p.homeY ?? p.y }
+            : p
+        ),
+      }));
     },
 
     swap: (outId, inId) => {
@@ -462,12 +486,14 @@ export const useMatch = create<MatchStore>((set, get) => {
         const out = m.roster.find((p) => p.id === outId);
         const incoming = m.roster.find((p) => p.id === inId);
         if (!out || !incoming) return m;
-        const ox = out.x;
-        const oy = out.y;
+        // The incoming player takes the outgoing player's home spot (where they
+        // started, before any dragging) — both their live and home position.
+        const hx = out.homeX ?? out.x;
+        const hy = out.homeY ?? out.y;
         const roster = m.roster.map((p) => {
-          if (p.id === outId)
-            return { ...p, x: incoming.x, y: incoming.y, onField: false };
-          if (p.id === inId) return { ...p, x: ox, y: oy, onField: true };
+          if (p.id === outId) return { ...p, onField: false };
+          if (p.id === inId)
+            return { ...p, x: hx, y: hy, homeX: hx, homeY: hy, onField: true };
           return p;
         });
         return { ...m, roster: benchLayout(roster) };
@@ -498,7 +524,9 @@ export const useMatch = create<MatchStore>((set, get) => {
           ...m,
           roster: benchLayout(
             m.roster.map((p) =>
-              p.id === id ? { ...p, onField: true, x: free.x, y: free.y } : p
+              p.id === id
+                ? { ...p, onField: true, x: free.x, y: free.y, homeX: free.x, homeY: free.y }
+                : p
             )
           ),
         };
@@ -514,7 +542,9 @@ export const useMatch = create<MatchStore>((set, get) => {
           ...m,
           roster: benchLayout(
             m.roster.map((p) =>
-              p.id === id ? { ...p, onField: true, x, y } : p
+              p.id === id
+                ? { ...p, onField: true, x, y, homeX: x, homeY: y }
+                : p
             )
           ),
         };
