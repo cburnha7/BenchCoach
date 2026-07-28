@@ -42,6 +42,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   const movePlayer = useMatch((s) => s.movePlayer);
   const moveOpponent = useMatch((s) => s.moveOpponent);
   const tapForBall = useMatch((s) => s.tapForBall);
+  const tapOpponentBall = useMatch((s) => s.tapOpponentBall);
   const addGhost = useMatch((s) => s.addGhost);
 
   const [box, setBox] = useState({ width: 0, height: 0 });
@@ -71,6 +72,23 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
         false,
         points
       );
+    },
+    [trailsOn, addGhost]
+  );
+
+  const handleOppDragEnd = useCallback(
+    (
+      index: number,
+      origin: { x: number; y: number },
+      to: { x: number; y: number },
+      points: { x: number; y: number }[]
+    ) => {
+      if (!trailsOn) return;
+      const dist = Math.hypot(to.x - origin.x, to.y - origin.y);
+      if (dist < TRAIL_MIN_DISTANCE) return;
+      // Carry (orange) when this opponent has the ball; otherwise a plain run.
+      const holder = useMatch.getState().match?.opponent.holder;
+      addGhost('', origin, to, holder === index, true, points);
     },
     [trailsOn, addGhost]
   );
@@ -106,6 +124,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   // a moved player still holds the slot closest to where they ended up.
   const slots = FORMATIONS[match.size][match.formationIdx].slots;
   const labels = positionLabels(match.size, match.formationIdx);
+  const oppLabels = positionLabels(match.size, match.opponent.formationIdx);
   const onFieldPlayers = match.roster.filter((p) => p.onField);
   const claimed = new Set<number>();
   onFieldPlayers.forEach((p) => {
@@ -164,10 +183,14 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
                 index={i}
                 x={p.x}
                 y={p.y}
+                label={oppLabels[i] ?? '·'}
                 scaleX={scaleX}
                 scaleY={scaleY}
                 markerScale={discScale}
+                hasBall={match.opponent.holder === i}
                 onMove={moveOpponent}
+                onDoubleTap={tapOpponentBall}
+                onDragEnd={handleOppDragEnd}
               />
             ))}
 

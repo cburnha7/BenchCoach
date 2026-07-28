@@ -46,6 +46,8 @@ export type OpponentState = {
   on: boolean;
   formationIdx: number;
   pos: { x: number; y: number }[] | null;
+  /** Index of the opponent holding the ball, or null. */
+  holder?: number | null;
 };
 
 /** A numbered pass between two points on the pitch. */

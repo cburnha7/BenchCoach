@@ -32,8 +32,14 @@ export const theme = {
   danger: '#e23b46',
   queued: '#e6b332',
 
-  // Ball possession ring
+  // Ball possession ring (our team)
   ball: '#ffd54a',
+  /** Pending-sub marker: cool and subtle, so it never reads as possession. */
+  subMark: '#6c8ebf',
+  /** Opponent ball / carry trail — orange, distinct from our red/yellow. */
+  oppBall: '#f0872e',
+  /** Opponent run trail — plain grey. */
+  oppRun: '#9aa4b8',
 
   /** Text on a saturated accent (live green, danger red, team colour). */
   onAccent: '#ffffff',

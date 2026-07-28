@@ -37,7 +37,7 @@ function emptyMatch(teamId: string, size: TeamSize): MatchState {
     formationIdx: 0,
     halfLen: 25,
     remaining: 25 * 60,
-    opponent: { on: false, formationIdx: 0, pos: null },
+    opponent: { on: false, formationIdx: 0, pos: null, holder: null },
     arrows: [],
     ghosts: [],
     holder: null,
@@ -122,6 +122,7 @@ type MatchStore = {
   setOpponentFormation: (idx: number) => void;
   moveOpponent: (index: number, x: number, y: number) => void;
   resetOpponent: () => void;
+  tapOpponentBall: (index: number) => void;
 };
 
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -175,6 +176,8 @@ export const useMatch = create<MatchStore>((set, get) => {
         homeX: p.homeX ?? p.x,
         homeY: p.homeY ?? p.y,
       }));
+      // Ball possession is a per-session tactics state, not persisted.
+      match.opponent = { ...match.opponent, holder: null };
       match.roster.forEach((p) => {
         if (match.minutes[p.id] == null) match.minutes[p.id] = 0;
       });
@@ -639,7 +642,16 @@ export const useMatch = create<MatchStore>((set, get) => {
 
     /** Wipe arrows, trails and possession. Positions are left alone. */
     clearBoard: () => {
-      patch((m) => ({ ...m, arrows: [], ghosts: [], holder: null }), false);
+      patch(
+        (m) => ({
+          ...m,
+          arrows: [],
+          ghosts: [],
+          holder: null,
+          opponent: { ...m.opponent, holder: null },
+        }),
+        false
+      );
     },
 
     addGhost: (label, origin, to, carry, opponent, points) => {
@@ -668,7 +680,7 @@ export const useMatch = create<MatchStore>((set, get) => {
           on && (!m.opponent.pos || m.opponent.pos.length !== m.size)
             ? mirrorSlots(m.size, m.opponent.formationIdx)
             : m.opponent.pos;
-        return { ...m, opponent: { ...m.opponent, on, pos } };
+        return { ...m, opponent: { ...m.opponent, on, pos, holder: null } };
       });
     },
 
@@ -681,9 +693,24 @@ export const useMatch = create<MatchStore>((set, get) => {
             ...m.opponent,
             formationIdx,
             pos: mirrorSlots(m.size, formationIdx),
+            holder: null,
           },
         };
       });
+    },
+
+    /** Toggle which opponent has the ball (or clear it). */
+    tapOpponentBall: (index) => {
+      patch(
+        (m) => ({
+          ...m,
+          opponent: {
+            ...m.opponent,
+            holder: m.opponent.holder === index ? null : index,
+          },
+        }),
+        false
+      );
     },
 
     moveOpponent: (index, x, y) => {

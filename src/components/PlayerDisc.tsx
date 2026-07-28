@@ -181,10 +181,14 @@ function PlayerDiscBase({
     zIndex: pressed.value > 0 ? 20 : 10,
   }));
 
+  // Bright and always visible while they hold the ball (never fades to 0).
   const ringStyle = useAnimatedStyle(() => ({
-    opacity: ring.value * 0.9,
-    transform: [{ scale: 1 + ring.value * 0.16 }],
+    opacity: hasBall ? 0.6 + ring.value * 0.4 : 0,
+    transform: [{ scale: 1 + ring.value * 0.1 }],
   }));
+
+  // A big yellow halo, distinctly larger than the disc.
+  const haloSize = discSize * 1.5;
 
   const label = badgeLabel(player);
   // An emoji badge is drawn big and bare — no coloured disc behind it. The
@@ -197,14 +201,18 @@ function PlayerDiscBase({
         style={[styles.wrap, { width: touchSize, height: touchSize }, animatedStyle]}
       >
         <View style={{ width: discSize, height: discSize }}>
-          {/* Possession ring, drawn just outside the disc edge. */}
+          {/* Possession halo — big, bright yellow, unmistakable. */}
           <Animated.View
             pointerEvents="none"
             style={[
               styles.ring,
               {
-                borderRadius: discSize / 2,
-                borderWidth: Math.max(2, 3 * discScale),
+                width: haloSize,
+                height: haloSize,
+                left: (discSize - haloSize) / 2,
+                top: (discSize - haloSize) / 2,
+                borderRadius: haloSize / 2,
+                borderWidth: Math.max(3, 5 * discScale),
                 borderColor: theme.ball,
               },
               ringStyle,
@@ -232,8 +240,8 @@ function PlayerDiscBase({
                 {
                   borderRadius: discSize / 2,
                   backgroundColor: scratched ? theme.surfaceAlt : color,
-                  borderColor: queued ? theme.queued : rgba('#000000', 0.35),
-                  borderWidth: queued ? 3 : 1.5,
+                  borderColor: queued ? theme.subMark : rgba('#000000', 0.35),
+                  borderWidth: queued ? 2.5 : 1.5,
                   opacity: scratched ? 0.45 : 1,
                 },
               ]}
@@ -286,7 +294,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ring: { ...StyleSheet.absoluteFill },
+  ring: { position: 'absolute' },
   disc: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',
@@ -320,7 +328,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: theme.queued,
+    backgroundColor: theme.subMark,
     borderWidth: 1.5,
     borderColor: 'rgba(0,0,0,0.4)',
   },

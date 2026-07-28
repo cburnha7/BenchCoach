@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import {
   Canvas,
   Circle,
+  DashPathEffect,
   Group,
   Path,
   Skia,
@@ -13,6 +14,8 @@ import { theme } from '../lib/theme';
 import type { Ghost, PassArrow } from '../lib/types';
 
 const DISC_R = 30;
+/** One weight for passes and trails so they read as one system. */
+const LINE_W = 3;
 /** Gap left at each end so arrows start and finish outside the discs. */
 const TAIL_GAP = 26;
 const HEAD_GAP = 30;
@@ -126,44 +129,49 @@ function TacticsLayerBase({
       pointerEvents="none"
     >
       <Group transform={[{ scaleX }, { scaleY }]}>
-        {/* Movement trails sit under passes: they're context, not the point. */}
-        {trails.map((g) => (
-          <Group key={g.id}>
-            <Path
-              path={g.path}
-              style="stroke"
-              strokeWidth={2.5}
-              strokeCap="round"
-              color={
-                g.opponent
-                  ? theme.opponent
-                  : g.carry
-                    ? theme.carry
-                    : theme.run
-              }
-              opacity={0.85}
-            >
-              {/* Dashed, to read as "was here" rather than "is here". */}
-            </Path>
-            {/* Origin marker: where the player started. */}
-            <Circle
-              cx={g.origin.x}
-              cy={g.origin.y}
-              r={DISC_R * 0.62}
-              style="stroke"
-              strokeWidth={2}
-              color={g.opponent ? theme.opponent : theme.run}
-              opacity={0.4}
-            />
-          </Group>
-        ))}
+        {/* Movement trails sit under passes: they're context, not the point.
+            Dashed and same weight as passes; carrying the ball is red (ours)
+            or orange (theirs), a plain run is white (ours) or grey (theirs). */}
+        {trails.map((g) => {
+          const trailColor = g.opponent
+            ? g.carry
+              ? theme.oppBall
+              : theme.oppRun
+            : g.carry
+              ? theme.carry
+              : theme.run;
+          return (
+            <Group key={g.id}>
+              <Path
+                path={g.path}
+                style="stroke"
+                strokeWidth={LINE_W}
+                strokeCap="round"
+                color={trailColor}
+                opacity={0.9}
+              >
+                <DashPathEffect intervals={[10, 8]} />
+              </Path>
+              {/* Origin marker: where they started. */}
+              <Circle
+                cx={g.origin.x}
+                cy={g.origin.y}
+                r={DISC_R * 0.62}
+                style="stroke"
+                strokeWidth={2}
+                color={trailColor}
+                opacity={0.4}
+              />
+            </Group>
+          );
+        })}
 
         {passes.map((a) => (
           <Group key={a.id}>
             <Path
               path={a.path}
               style="stroke"
-              strokeWidth={3.5}
+              strokeWidth={LINE_W}
               strokeCap="round"
               color={theme.pass}
             />
