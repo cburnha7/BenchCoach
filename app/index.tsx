@@ -5,13 +5,16 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StadiumBackdrop } from '../src/components/StadiumBackdrop';
+import { LinearGradient } from 'expo-linear-gradient';
 import { DraggableTeamList } from '../src/components/DraggableTeamList';
+import { TeamEditSheet } from '../src/components/TeamEditSheet';
 import { useTeams } from '../src/store/useTeams';
 import {
   DEFAULT_COLOR,
@@ -21,9 +24,10 @@ import {
   type Team,
   type TeamSize,
 } from '../src/lib/types';
-import { LinearGradient } from 'expo-linear-gradient';
-import { TeamEditSheet } from '../src/components/TeamEditSheet';
-import { theme, radius, rgba, mix } from '../src/lib/theme';
+import { theme, radius, mix } from '../src/lib/theme';
+
+const MAX_TEAMS = 5;
+const GAP = 14;
 
 export default function Home() {
   const router = useRouter();
@@ -32,7 +36,6 @@ export default function Home() {
   const hydrated = useTeams((s) => s.hydrated);
   const hydrate = useTeams((s) => s.hydrate);
   const addTeam = useTeams((s) => s.addTeam);
-  const updateTeam = useTeams((s) => s.updateTeam);
   const reorder = useTeams((s) => s.reorder);
 
   const [creating, setCreating] = useState(false);
@@ -41,10 +44,21 @@ export default function Home() {
   const [name, setName] = useState('');
   const [size, setSize] = useState<TeamSize>(9);
   const [color, setColor] = useState<string>(DEFAULT_COLOR);
+  // Measured height of the list area, so cards can fill it.
+  const [listH, setListH] = useState(0);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  // No card taller than a third of the list; past three teams they share the
+  // space evenly (1/4 for four, 1/5 for five).
+  const rows = Math.min(Math.max(teams.length, 1), MAX_TEAMS);
+  const cardH =
+    listH > 0
+      ? Math.min(listH / 3, (listH - GAP * (rows - 1)) / rows)
+      : 180;
+  const atMax = teams.length >= MAX_TEAMS;
 
   const create = async () => {
     const id = await addTeam({ name, size, color });
@@ -55,79 +69,68 @@ export default function Home() {
     router.push(`/team/${id}`);
   };
 
-  const renderTeam = ({ item }: { item: Team }) => (
+  const renderTeam = (item: Team) => (
     <Pressable
-      style={({ pressed }) => [styles.teamCard, pressed && styles.teamPressed]}
+      style={({ pressed }) => [
+        styles.card,
+        { height: cardH, borderColor: item.color },
+        pressed && styles.cardPressed,
+      ]}
       onPress={() =>
         editing ? setEditId(item.id) : router.push(`/team/${item.id}`)
       }
     >
-      {item.photoUri && (
+      {item.photoUri ? (
         <Image
           source={{ uri: item.photoUri }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           transition={200}
         />
+      ) : (
+        <LinearGradient
+          colors={[mix(item.color, 0.15), mix(item.color, 0.5)]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
       )}
 
-      {/*
-        The card carries the team's colour, mixed toward the base rather than
-        laid over it at low alpha — alpha-over-dark desaturates and everything
-        ends up looking grey. Over a photo we still need alpha, so the photo
-        shows through; without one the fill is fully opaque.
-      */}
+      {/* Slight fade at the bottom so the name reads; the photo stays the star. */}
       <LinearGradient
-        colors={
-          item.photoUri
-            ? [rgba(item.color, 0.82), rgba(mix(item.color, 0.78), 0.94)]
-            : [mix(item.color, 0.42), mix(item.color, 0.8)]
-        }
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        colors={['transparent', 'rgba(0,0,0,0.6)']}
+        start={{ x: 0, y: 0.4 }}
+        end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
+        pointerEvents="none"
       />
 
-      {/* Full-height colour edge: reads instantly, survives any photo. */}
-      <View style={[styles.edge, { backgroundColor: item.color }]} />
-
-      <View style={styles.teamInner}>
-        <View style={styles.teamMain}>
-          <Text style={styles.teamName} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <View style={styles.metaRow}>
-            <View style={[styles.dot, { backgroundColor: item.color }]} />
-            <Text style={styles.teamMeta}>{formatSize(item.size)}</Text>
-            <Text style={styles.metaSep}>·</Text>
-            <Text style={styles.teamMeta}>Soccer</Text>
-          </View>
-        </View>
-
-        {editing ? (
-          <View style={styles.editPill}>
-            <Text style={styles.editPillText}>Edit</Text>
-          </View>
-        ) : (
-          <View style={styles.go}>
-            <Text style={styles.goText}>›</Text>
-          </View>
-        )}
+      <View style={styles.cardInner}>
+        <Text style={styles.cardName} numberOfLines={1}>
+          {item.name}
+        </Text>
+        <Text style={styles.cardMeta}>{formatSize(item.size)} · Soccer</Text>
       </View>
+
+      {editing && (
+        <View style={styles.editPill}>
+          <Text style={styles.editPillText}>Edit</Text>
+        </View>
+      )}
     </Pressable>
   );
 
   return (
     <View style={styles.screen}>
-      <StadiumBackdrop />
-
-      {/*
-        Edit lives in the navigation header rather than a row of its own: the
-        header was already showing the app name, so a second bar underneath it
-        was a duplicate title and a wasted 44pt of screen.
-      */}
+      <StatusBar style="dark" />
       <Stack.Screen
         options={{
+          title: 'Bench Coach',
+          headerTransparent: false,
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: '#ffffff' },
+          headerTintColor: '#0e1320',
+          headerTitleStyle: { color: '#0e1320', fontWeight: '800' },
           headerRight: () => (
             <Pressable
               onPress={() => setEditing((e) => !e)}
@@ -146,36 +149,42 @@ export default function Home() {
         }}
       />
 
-      {teams.length === 0 ? (
-        hydrated ? (
-          // Transparent header means content starts at the very top.
-          <View style={[styles.empty, { paddingTop: insets.top + 90 }]}>
-            <Text style={styles.emptyTitle}>Add your first team</Text>
-            <Text style={styles.emptyBody}>
-              Track lineups, minutes and subs from the sideline. Everything
-              stays on this device.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.fill} />
-        )
-      ) : (
-        <DraggableTeamList
-          teams={teams}
-          editing={editing}
-          onReorder={reorder}
-          renderItem={(t) => renderTeam({ item: t })}
-          paddingTop={insets.top + 52}
-          paddingBottom={16}
-        />
-      )}
-
-      <Pressable
-        style={[styles.addTeam, { marginBottom: insets.bottom + 12 }]}
-        onPress={() => setCreating(true)}
+      <View
+        style={styles.listArea}
+        onLayout={(e) => setListH(e.nativeEvent.layout.height)}
       >
-        <Text style={styles.addTeamText}>Add team</Text>
-      </Pressable>
+        {teams.length === 0 ? (
+          hydrated ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>Add your first team</Text>
+              <Text style={styles.emptyBody}>
+                Track lineups, minutes and subs from the sideline. Everything
+                stays on this device.
+              </Text>
+            </View>
+          ) : null
+        ) : (
+          <DraggableTeamList
+            teams={teams}
+            editing={editing}
+            onReorder={reorder}
+            renderItem={renderTeam}
+            cardHeight={cardH}
+            gap={GAP}
+            paddingTop={12}
+            paddingBottom={12}
+          />
+        )}
+      </View>
+
+      {!atMax && (
+        <Pressable
+          style={[styles.addTeam, { marginBottom: insets.bottom + 12 }]}
+          onPress={() => setCreating(true)}
+        >
+          <Text style={styles.addTeamText}>Add team</Text>
+        </Pressable>
+      )}
 
       <Modal
         visible={creating}
@@ -241,84 +250,64 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.bg },
-  // Idle "Edit" is a plain text action (a pill here double-ringed against the
-  // transparent header). Only the active "Done" state fills into a pill.
+  screen: { flex: 1, backgroundColor: '#ffffff' },
+  listArea: { flex: 1 },
+  // Header Edit button, dark on the white screen.
   editBtn: {
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: radius.pill,
   },
-  editBtnOn: { paddingHorizontal: 14, backgroundColor: theme.text },
+  editBtnOn: { paddingHorizontal: 14, backgroundColor: '#0e1320' },
   editPressed: { opacity: 0.6 },
-  editBtnText: { color: theme.text, fontSize: 16, fontWeight: '600' },
-  editBtnTextOn: { color: theme.bg, fontWeight: '700' },
-  editPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
-    backgroundColor: theme.text,
-  },
-  editPillText: { color: theme.bg, fontWeight: '800', fontSize: 13 },
-  fill: { flex: 1 },
-  teamCard: {
-    height: 88,
-    borderRadius: radius.lg,
+  editBtnText: { color: '#0e1320', fontSize: 16, fontWeight: '600' },
+  editBtnTextOn: { color: '#ffffff', fontWeight: '700' },
+  card: {
+    borderRadius: 22,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 4,
+    backgroundColor: '#dfe3ea',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowRadius: 14,
-    shadowOpacity: 0.5,
-    elevation: 7,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 16,
+    shadowOpacity: 0.22,
+    elevation: 6,
   },
-  teamPressed: { opacity: 0.82, transform: [{ scale: 0.985 }] },
-  edge: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 6,
+  cardPressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
+  cardInner: { flex: 1, justifyContent: 'flex-end', padding: 18 },
+  cardName: {
+    color: '#ffffff',
+    fontSize: 27,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 5,
   },
-  teamInner: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 18,
-    paddingRight: 14,
-  },
-  teamMain: { flex: 1 },
-  teamName: {
-    color: theme.text,
-    fontSize: 19,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 5 },
-  dot: { width: 7, height: 7, borderRadius: radius.pill },
-  metaSep: { color: 'rgba(255,255,255,0.45)', fontSize: 13 },
-  go: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  goText: {
-    color: theme.text,
-    fontSize: 20,
-    fontWeight: '600',
-    marginTop: -2,
-    marginLeft: 2,
-  },
-  teamMeta: { color: 'rgba(255,255,255,0.78)', fontSize: 13, fontWeight: '600' },
-  empty: { paddingTop: 60, paddingHorizontal: 30, alignItems: 'center' },
-  emptyTitle: { color: theme.text, fontSize: 19, fontWeight: '700' },
-  emptyBody: {
-    color: theme.textDim,
+  cardMeta: {
+    color: 'rgba(255,255,255,0.92)',
     fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  editPill: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+  },
+  editPillText: { color: '#0e1320', fontWeight: '800', fontSize: 13 },
+  empty: { flex: 1, justifyContent: 'center', paddingHorizontal: 30, alignItems: 'center' },
+  emptyTitle: { color: '#0e1320', fontSize: 20, fontWeight: '800' },
+  emptyBody: {
+    color: '#5b6472',
+    fontSize: 14.5,
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 21,
@@ -332,7 +321,7 @@ const styles = StyleSheet.create({
     shadowColor: theme.live,
     shadowOffset: { width: 0, height: 6 },
     shadowRadius: 18,
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.3,
     elevation: 8,
   },
   addTeamText: { color: theme.onAccent, fontSize: 17, fontWeight: '800', letterSpacing: 0.2 },

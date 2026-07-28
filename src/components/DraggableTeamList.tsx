@@ -11,16 +11,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { Team } from '../lib/types';
 
-// Card height (88) + list gap (11): the vertical stride between cards.
-const CARD_H = 88;
-const GAP = 11;
-const STRIDE = CARD_H + GAP;
-
 type Props = {
   teams: Team[];
   editing: boolean;
   onReorder: (from: number, to: number) => void;
   renderItem: (team: Team) => React.ReactNode;
+  /** Card height and the gap between cards, driving the drag stride. */
+  cardHeight: number;
+  gap: number;
   paddingTop: number;
   paddingBottom: number;
 };
@@ -34,11 +32,14 @@ export function DraggableTeamList({
   editing,
   onReorder,
   renderItem,
+  cardHeight,
+  gap,
   paddingTop,
   paddingBottom,
 }: Props) {
   const dragIndex = useSharedValue(-1);
   const dragY = useSharedValue(0);
+  const stride = cardHeight + gap;
 
   return (
     <ScrollView
@@ -47,13 +48,15 @@ export function DraggableTeamList({
       // While editing, a vertical drag must move a card, not scroll the list.
       scrollEnabled={!editing}
     >
-      <View style={{ height: teams.length * STRIDE }}>
+      <View style={{ height: Math.max(0, teams.length * stride - gap) }}>
         {teams.map((t, i) => (
           <Row
             key={t.id}
             index={i}
             count={teams.length}
             editing={editing}
+            cardHeight={cardHeight}
+            stride={stride}
             dragIndex={dragIndex}
             dragY={dragY}
             onReorder={onReorder}
@@ -70,6 +73,8 @@ function Row({
   index,
   count,
   editing,
+  cardHeight,
+  stride,
   dragIndex,
   dragY,
   onReorder,
@@ -78,6 +83,8 @@ function Row({
   index: number;
   count: number;
   editing: boolean;
+  cardHeight: number;
+  stride: number;
   dragIndex: SharedValue<number>;
   dragY: SharedValue<number>;
   onReorder: (from: number, to: number) => void;
@@ -102,7 +109,7 @@ function Row({
     })
     .onEnd(() => {
       // Clamp inline — a worklet can't call a plain JS helper.
-      const raw = Math.round((index * STRIDE + dragY.value) / STRIDE);
+      const raw = Math.round((index * stride + dragY.value) / stride);
       const target = Math.max(0, Math.min(last, raw));
       if (target !== index) runOnJS(onReorder)(index, target);
       dragIndex.value = -1;
@@ -114,23 +121,23 @@ function Row({
     if (d === index) {
       // The lifted card follows the finger.
       return {
-        transform: [{ translateY: index * STRIDE + dragY.value }, { scale: 1.03 }],
+        transform: [{ translateY: index * stride + dragY.value }, { scale: 1.03 }],
         zIndex: 100,
       };
     }
     if (d === -1) {
       // Idle: sit at the natural slot with no animation (avoids a mount slide).
-      return { transform: [{ translateY: index * STRIDE }, { scale: 1 }], zIndex: 1 };
+      return { transform: [{ translateY: index * stride }, { scale: 1 }], zIndex: 1 };
     }
     // Another card is being dragged — shift to open a gap for its target slot.
-    const raw = Math.round((d * STRIDE + dragY.value) / STRIDE);
+    const raw = Math.round((d * stride + dragY.value) / stride);
     const target = Math.max(0, Math.min(last, raw));
     let slot = index;
     if (d < index && target >= index) slot = index - 1;
     else if (d > index && target <= index) slot = index + 1;
     return {
       transform: [
-        { translateY: withTiming(slot * STRIDE, { duration: 160 }) },
+        { translateY: withTiming(slot * stride, { duration: 160 }) },
         { scale: 1 },
       ],
       zIndex: 1,
@@ -138,7 +145,7 @@ function Row({
   });
 
   return (
-    <Animated.View style={[styles.row, style]}>
+    <Animated.View style={[styles.row, { height: cardHeight }, style]}>
       <GestureDetector gesture={pan}>
         <View>{children}</View>
       </GestureDetector>
@@ -148,5 +155,5 @@ function Row({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  row: { position: 'absolute', left: 0, right: 0, height: CARD_H },
+  row: { position: 'absolute', left: 0, right: 0 },
 });
