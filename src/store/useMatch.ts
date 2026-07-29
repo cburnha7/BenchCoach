@@ -99,6 +99,7 @@ type MatchStore = {
   resetPositions: () => void;
 
   swap: (outId: string, inId: string) => void;
+  swapPositions: (aId: string, bId: string) => void;
   sendToBench: (id: string) => void;
   bringOn: (id: string) => void;
   bringOnAt: (id: string, x: number, y: number) => void;
@@ -510,6 +511,31 @@ export const useMatch = create<MatchStore>((set, get) => {
           return p;
         });
         return { ...m, roster: benchLayout(roster) };
+      });
+    },
+
+    /**
+     * Two on-field players trade places — both their live position and their
+     * home spot — so Reset sends them to the swapped spots. Uses home (the
+     * pre-drag position), so a player dragged onto another lands cleanly.
+     */
+    swapPositions: (aId, bId) => {
+      patch((m) => {
+        const a = m.roster.find((p) => p.id === aId);
+        const b = m.roster.find((p) => p.id === bId);
+        if (!a || !b) return m;
+        const ah = { x: a.homeX ?? a.x, y: a.homeY ?? a.y };
+        const bh = { x: b.homeX ?? b.x, y: b.homeY ?? b.y };
+        return {
+          ...m,
+          roster: m.roster.map((p) => {
+            if (p.id === aId)
+              return { ...p, x: bh.x, y: bh.y, homeX: bh.x, homeY: bh.y };
+            if (p.id === bId)
+              return { ...p, x: ah.x, y: ah.y, homeX: ah.x, homeY: ah.y };
+            return p;
+          }),
+        };
       });
     },
 

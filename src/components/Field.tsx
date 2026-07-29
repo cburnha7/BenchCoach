@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -24,6 +25,8 @@ import { radius, rgba } from '../lib/theme';
 const TRAIL_MIN_DISTANCE = 45;
 /** Min spacing (field units) between sampled points on a freehand drawing. */
 const DRAW_SAMPLE = 14;
+/** How close a drop must land to another player to offer a position swap. */
+const SWAP_RADIUS = 46;
 
 /**
  * How far the pitch may stretch away from its true 600:840 proportions.
@@ -52,6 +55,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   const tapOpponentBall = useMatch((s) => s.tapOpponentBall);
   const addGhost = useMatch((s) => s.addGhost);
   const addDrawing = useMatch((s) => s.addDrawing);
+  const swapPositions = useMatch((s) => s.swapPositions);
 
   const [box, setBox] = useState({ width: 0, height: 0 });
   // Sampled freehand-draw path (flattened x,y,x,y…) in field coordinates.
@@ -70,6 +74,33 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
       carriedBall: boolean,
       points: { x: number; y: number }[]
     ) => {
+      // Dropped onto another of our on-field players? Offer to swap spots.
+      const m = useMatch.getState().match;
+      if (m) {
+        let target: (typeof m.roster)[number] | null = null;
+        let best = SWAP_RADIUS * SWAP_RADIUS;
+        for (const p of m.roster) {
+          if (p.id === id || !p.onField || m.scratched.includes(p.id)) continue;
+          const d2 = (p.x - to.x) ** 2 + (p.y - to.y) ** 2;
+          if (d2 < best) {
+            best = d2;
+            target = p;
+          }
+        }
+        if (target) {
+          const me = m.roster.find((p) => p.id === id);
+          const t = target;
+          Alert.alert(
+            'Swap positions?',
+            `${firstName(me?.name ?? '')} ↔ ${firstName(t.name)}`,
+            [
+              { text: 'No', style: 'cancel' },
+              { text: 'Swap', onPress: () => swapPositions(id, t.id) },
+            ]
+          );
+        }
+      }
+
       if (!trailsOn) return;
       const dist = Math.hypot(to.x - origin.x, to.y - origin.y);
       if (dist < TRAIL_MIN_DISTANCE) return;
@@ -83,7 +114,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
         points
       );
     },
-    [trailsOn, addGhost]
+    [trailsOn, addGhost, swapPositions]
   );
 
   const handleOppDragEnd = useCallback(
