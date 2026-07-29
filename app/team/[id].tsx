@@ -177,10 +177,11 @@ export default function TeamScreen() {
       />
 
       {wide ? (
-        /* Tablet: clock, scoreboard, formation, gear, reset and actions all
-           collapse into a single row above the pitch. */
+        /* Tablet top row: the things that sit on top on phone — the clock and
+           the scoreboard — on a single row. */
         <View style={[styles.controls, styles.controlsWide]}>
           <ClockBar inline />
+          <View style={styles.spacer} />
           {ready && (
             <ScoreBoard
               inline
@@ -190,12 +191,6 @@ export default function TeamScreen() {
               onOpenOverview={() => setGameOpen(true)}
             />
           )}
-          {formationPicker(false)}
-          {gearBtn}
-          {resetBtn}
-          <View style={styles.spacer} />
-          {rosterButton(styles.btnWide)}
-          {subsButton(styles.btnWide)}
         </View>
       ) : (
         /* Phone: scoreboard on top, then the clock, above the pitch. */
@@ -219,7 +214,18 @@ export default function TeamScreen() {
         onEmptySlot={(x, y) => setBringOnSlot({ x, y })}
       />
 
-      {!wide && (
+      {wide ? (
+        /* Tablet bottom row: the things that sit at the bottom on phone —
+           formation, gear, reset and the roster/subs actions — on one row. */
+        <View style={[styles.footerWide, { paddingBottom: insets.bottom + 8 }]}>
+          {formationPicker(false)}
+          {gearBtn}
+          {resetBtn}
+          <View style={styles.spacer} />
+          {rosterButton(styles.btnWide)}
+          {subsButton(styles.btnWide)}
+        </View>
+      ) : (
         /* Phone: formation/gear/reset, then roster/subs, sit below the pitch. */
         <>
           <View style={styles.controls}>
@@ -327,6 +333,22 @@ const styles = StyleSheet.create({
   footer: { paddingHorizontal: 12, paddingTop: 6 },
   footerRow: { flexDirection: 'row', gap: 8 },
   footerBtn: { flex: 1 },
+  /** Wide layout: formation, gear, reset and actions on one row below the pitch. */
+  footerWide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    backgroundColor: theme.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowRadius: 12,
+    shadowOpacity: 0.4,
+    elevation: 6,
+  },
   /**
    * Shorter than before — 44pt tall, which is Apple's minimum target and no
    * more. Every point saved here goes straight to the field.
