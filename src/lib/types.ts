@@ -73,6 +73,12 @@ export type Ghost = {
   opponent: boolean;
 };
 
+/** A freehand line drawn on empty space (highlighting space, lanes, etc.). */
+export type FreeDraw = {
+  id: string;
+  points: { x: number; y: number }[];
+};
+
 /**
  * Everything about one team's current match.
  * `minutes` accumulates seconds per player while the clock runs.
@@ -118,6 +124,8 @@ export type MatchState = {
   /** Tactics layer. Cleared with the board, not persisted between sessions. */
   arrows: PassArrow[];
   ghosts: Ghost[];
+  /** Freehand lines drawn on the pitch. */
+  drawings: FreeDraw[];
   /** Player currently on the ball, or null. */
   holder: string | null;
 };

@@ -11,11 +11,13 @@ import {
 } from '@shopify/react-native-skia';
 import { Platform } from 'react-native';
 import { theme } from '../lib/theme';
-import type { Ghost, PassArrow } from '../lib/types';
+import type { FreeDraw, Ghost, PassArrow } from '../lib/types';
 
 const DISC_R = 30;
 /** One weight for passes and trails so they read as one system. */
 const LINE_W = 3;
+/** Freehand annotations are a touch heavier so they read as drawn-on. */
+const DRAW_W = 5;
 /** Gap left at each end so arrows start and finish outside the discs. */
 const TAIL_GAP = 26;
 const HEAD_GAP = 30;
@@ -31,6 +33,7 @@ const font = matchFont({
 type Props = {
   arrows: PassArrow[];
   ghosts: Ghost[];
+  drawings: FreeDraw[];
   width: number;
   height: number;
   scaleX: number;
@@ -90,6 +93,7 @@ function curvePath(points: { x: number; y: number }[]) {
 function TacticsLayerBase({
   arrows,
   ghosts,
+  drawings,
   width,
   height,
   scaleX,
@@ -121,7 +125,17 @@ function TacticsLayerBase({
     [ghosts]
   );
 
-  if (passes.length === 0 && trails.length === 0) return null;
+  const freehand = useMemo(
+    () =>
+      drawings
+        .filter((d) => d.points.length >= 2)
+        .map((d) => ({ id: d.id, path: curvePath(d.points) })),
+    [drawings]
+  );
+
+  if (passes.length === 0 && trails.length === 0 && freehand.length === 0) {
+    return null;
+  }
 
   return (
     <Canvas
@@ -129,6 +143,20 @@ function TacticsLayerBase({
       pointerEvents="none"
     >
       <Group transform={[{ scaleX }, { scaleY }]}>
+        {/* Freehand annotations: solid white, a touch thicker than the lines. */}
+        {freehand.map((f) => (
+          <Path
+            key={f.id}
+            path={f.path}
+            style="stroke"
+            strokeWidth={DRAW_W}
+            strokeCap="round"
+            strokeJoin="round"
+            color={theme.run}
+            opacity={0.95}
+          />
+        ))}
+
         {/* Movement trails sit under passes: they're context, not the point.
             Dashed and same weight as passes; carrying the ball is red (ours)
             or orange (theirs), a plain run is white (ours) or grey (theirs). */}

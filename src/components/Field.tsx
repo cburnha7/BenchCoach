@@ -6,6 +6,11 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { Pitch } from './Pitch';
 import { PlayerDisc, DISC_R } from './PlayerDisc';
 import { OpponentMarker } from './OpponentMarker';
@@ -17,6 +22,8 @@ import { radius, rgba } from '../lib/theme';
 
 /** A drag shorter than this is a nudge, not a run worth drawing. */
 const TRAIL_MIN_DISTANCE = 45;
+/** Min spacing (field units) between sampled points on a freehand drawing. */
+const DRAW_SAMPLE = 14;
 
 /**
  * How far the pitch may stretch away from its true 600:840 proportions.
@@ -44,8 +51,11 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   const tapForBall = useMatch((s) => s.tapForBall);
   const tapOpponentBall = useMatch((s) => s.tapOpponentBall);
   const addGhost = useMatch((s) => s.addGhost);
+  const addDrawing = useMatch((s) => s.addDrawing);
 
   const [box, setBox] = useState({ width: 0, height: 0 });
+  // Sampled freehand-draw path (flattened x,y,x,y…) in field coordinates.
+  const drawPts = useSharedValue<number[]>([]);
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -144,6 +154,34 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
     .map((s, i) => ({ s, i }))
     .filter(({ i }) => !claimed.has(i));
 
+  // Freehand drawing on empty space, only when trails are on. Sits under the
+  // discs, so a drag that starts on a player still moves the player.
+  const drawPan = Gesture.Pan()
+    .enabled(trailsOn)
+    .minDistance(6)
+    .onStart((e) => {
+      drawPts.value = [e.x / scaleX, e.y / scaleY];
+    })
+    .onChange((e) => {
+      const fx = e.x / scaleX;
+      const fy = e.y / scaleY;
+      const arr = drawPts.value;
+      const dx = fx - arr[arr.length - 2];
+      const dy = fy - arr[arr.length - 1];
+      if (dx * dx + dy * dy >= DRAW_SAMPLE * DRAW_SAMPLE) {
+        drawPts.value = [...arr, fx, fy];
+      }
+    })
+    .onEnd((e) => {
+      const flat = [...drawPts.value, e.x / scaleX, e.y / scaleY];
+      if (flat.length < 6) return; // need a real stroke, not a nudge
+      const pairs: { x: number; y: number }[] = [];
+      for (let i = 0; i < flat.length; i += 2) {
+        pairs.push({ x: flat[i], y: flat[i + 1] });
+      }
+      runOnJS(addDrawing)(pairs);
+    });
+
   return (
     <View style={styles.fill} onLayout={onLayout}>
       {ready && (
@@ -153,9 +191,16 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
           </View>
           <View pointerEvents="none" style={styles.rim} />
 
+          {/* Draw layer: captures freehand strokes on empty space (trails on),
+              below the discs so players keep their own drags. */}
+          <GestureDetector gesture={drawPan}>
+            <Animated.View style={StyleSheet.absoluteFill} />
+          </GestureDetector>
+
           <TacticsLayer
             arrows={match.arrows}
             ghosts={match.ghosts}
+            drawings={match.drawings}
             width={stageW}
             height={stageH}
             scaleX={scaleX}

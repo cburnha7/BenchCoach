@@ -11,6 +11,7 @@ import {
   clamp,
   makeId,
   type Card,
+  type FreeDraw,
   type Ghost,
   type MatchState,
   type PassArrow,
@@ -39,6 +40,7 @@ function emptyMatch(teamId: string, size: TeamSize): MatchState {
     remaining: 25 * 60,
     opponent: { on: false, formationIdx: 0, pos: null, holder: null },
     arrows: [],
+    drawings: [],
     ghosts: [],
     holder: null,
   };
@@ -116,6 +118,7 @@ type MatchStore = {
     opponent: boolean,
     points?: { x: number; y: number }[]
   ) => void;
+  addDrawing: (points: { x: number; y: number }[]) => void;
   clearGhosts: () => void;
 
   // Opponent shadow team
@@ -169,6 +172,7 @@ export const useMatch = create<MatchStore>((set, get) => {
         // The tactics board starts clean each session.
         arrows: [],
         ghosts: [],
+        drawings: [],
         holder: null,
       };
       // Backfill minute entries and home spots for older saved players.
@@ -645,18 +649,24 @@ export const useMatch = create<MatchStore>((set, get) => {
       );
     },
 
-    /** Wipe arrows, trails and possession. Positions are left alone. */
+    /** Wipe arrows, trails, drawings and possession. Positions are left alone. */
     clearBoard: () => {
       patch(
         (m) => ({
           ...m,
           arrows: [],
           ghosts: [],
+          drawings: [],
           holder: null,
           opponent: { ...m.opponent, holder: null },
         }),
         false
       );
+    },
+
+    addDrawing: (points) => {
+      const draw: FreeDraw = { id: makeId('d'), points };
+      patch((m) => ({ ...m, drawings: [...m.drawings, draw] }), false);
     },
 
     addGhost: (label, origin, to, carry, opponent, points) => {
