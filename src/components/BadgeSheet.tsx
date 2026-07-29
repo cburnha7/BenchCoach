@@ -213,11 +213,13 @@ const styles = StyleSheet.create({
   keyText: { color: theme.text, fontSize: 20, fontWeight: '700' },
   keyGo: { backgroundColor: theme.live },
   keyGoText: { color: theme.onAccent, fontSize: 16, fontWeight: '800' },
-  emojiScroll: { maxHeight: 360 },
-  emojiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  emojiScroll: { maxHeight: 420 },
+  emojiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  // Small buttons that hug a big emoji, so many fit on screen at once. Fixed
+  // size (not a % of width) means the row packs in more on a wide tablet.
   emojiBtn: {
-    width: '22.5%',
-    aspectRatio: 1,
+    width: 46,
+    height: 46,
     borderRadius: radius.md,
     backgroundColor: theme.control,
     alignItems: 'center',
@@ -226,8 +228,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   emojiOn: { borderColor: theme.live },
-  emojiText: { fontSize: 26 },
-  noneText: { color: theme.textDim, fontWeight: '700', fontSize: 13 },
+  emojiText: { fontSize: 32 },
+  noneText: { color: theme.textDim, fontWeight: '700', fontSize: 12 },
   clear: {
     marginTop: 14,
     paddingVertical: 11,
