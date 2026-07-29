@@ -169,6 +169,9 @@ function PlayerDiscBase({
   // Reanimated captures a worklet's closure at its definition site, so a value
   // it reads must be initialised first or it throws when the disc mounts.
   const discSize = DISC_R * 2 * discScale;
+  // The number/initial disc is drawn a little smaller than its box, and the
+  // emoji a little larger than its glyph padding, so the two read the same size.
+  const circleSize = discSize * 0.88;
   const touchSize = (DISC_R + TAP_PAD) * 2 * discScale;
   const touchR = touchSize / 2;
 
@@ -200,7 +203,14 @@ function PlayerDiscBase({
       <Animated.View
         style={[styles.wrap, { width: touchSize, height: touchSize }, animatedStyle]}
       >
-        <View style={{ width: discSize, height: discSize }}>
+        <View
+          style={{
+            width: discSize,
+            height: discSize,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           {/* Possession halo — big, bright yellow, unmistakable. */}
           <Animated.View
             pointerEvents="none"
@@ -224,8 +234,9 @@ function PlayerDiscBase({
                 style={[
                   styles.emoji,
                   {
-                    // Sized to the disc so the glyph stays inside the tap box.
-                    fontSize: Math.round(discSize * 0.9),
+                    // Larger than the disc box so the glyph fills it and matches
+                    // the number discs' visual size.
+                    fontSize: Math.round(discSize * 1.2),
                     opacity: scratched ? 0.45 : 1,
                   },
                 ]}
@@ -238,7 +249,9 @@ function PlayerDiscBase({
               style={[
                 styles.disc,
                 {
-                  borderRadius: discSize / 2,
+                  width: circleSize,
+                  height: circleSize,
+                  borderRadius: circleSize / 2,
                   backgroundColor: scratched ? theme.surfaceAlt : color,
                   borderColor: queued ? theme.subMark : rgba('#000000', 0.35),
                   borderWidth: queued ? 2.5 : 1.5,
@@ -296,7 +309,6 @@ const styles = StyleSheet.create({
   },
   ring: { position: 'absolute' },
   disc: {
-    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
