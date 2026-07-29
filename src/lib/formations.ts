@@ -54,8 +54,15 @@ export const FORMATIONS: Record<TeamSize, Formation[]> = {
  * `x` gives the side (600 wide, centre 300); `y` gives depth (own goal high,
  * opponent goal low) which separates a holding mid from an attacking one.
  */
-function slotCode(role: 'D' | 'M' | 'F', x: number, y: number): string {
-  const side = x < 200 ? 'L' : x > 400 ? 'R' : 'C';
+function slotCode(
+  role: 'D' | 'M' | 'F',
+  x: number,
+  y: number,
+  mirror: boolean
+): string {
+  // Opponents face the other way, so their left/right is flipped vs the field.
+  const sx = mirror ? FIELD_W - x : x;
+  const side = sx < 200 ? 'L' : sx > 400 ? 'R' : 'C';
   if (role === 'D') return side === 'C' ? 'CB' : `${side}B`;
   if (role === 'F') return side === 'C' ? 'ST' : `${side}W`;
   // Midfield: wide slots are flank mids; central slots split by depth.
@@ -71,7 +78,11 @@ function slotCode(role: 'D' | 'M' | 'F', x: number, y: number): string {
  * attack); the exact code then comes from the slot's position. Used to label
  * empty starter slots on the board so the shape is legible before players load.
  */
-export function positionLabels(size: TeamSize, idx: number): string[] {
+export function positionLabels(
+  size: TeamSize,
+  idx: number,
+  mirror = false
+): string[] {
   const { name, slots } = FORMATIONS[size][idx];
   // Outfield line counts from the name, dropping qualifiers like "Diamond".
   const lines = name
@@ -92,7 +103,9 @@ export function positionLabels(size: TeamSize, idx: number): string[] {
   });
 
   return slots.map((s, i) =>
-    roles[i] === 'GK' ? 'GK' : slotCode(roles[i] as 'D' | 'M' | 'F', s.x, s.y)
+    roles[i] === 'GK'
+      ? 'GK'
+      : slotCode(roles[i] as 'D' | 'M' | 'F', s.x, s.y, mirror)
   );
 }
 

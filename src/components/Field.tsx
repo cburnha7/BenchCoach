@@ -134,7 +134,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   // a moved player still holds the slot closest to where they ended up.
   const slots = FORMATIONS[match.size][match.formationIdx].slots;
   const labels = positionLabels(match.size, match.formationIdx);
-  const oppLabels = positionLabels(match.size, match.opponent.formationIdx);
+  const oppLabels = positionLabels(match.size, match.opponent.formationIdx, true);
   const onFieldPlayers = match.roster.filter((p) => p.onField);
   const claimed = new Set<number>();
   onFieldPlayers.forEach((p) => {
@@ -154,10 +154,10 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
     .map((s, i) => ({ s, i }))
     .filter(({ i }) => !claimed.has(i));
 
-  // Freehand drawing on empty space, only when trails are on. Sits under the
-  // discs, so a drag that starts on a player still moves the player.
+  // Freehand doodling on empty space — always available, independent of the
+  // tracer. Sits under the discs, so a drag that starts on a player still
+  // moves the player. Cleared by Reset / clearBoard.
   const drawPan = Gesture.Pan()
-    .enabled(trailsOn)
     .minDistance(6)
     .onStart((e) => {
       drawPts.value = [e.x / scaleX, e.y / scaleY];
@@ -191,8 +191,8 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
           </View>
           <View pointerEvents="none" style={styles.rim} />
 
-          {/* Draw layer: captures freehand strokes on empty space (trails on),
-              below the discs so players keep their own drags. */}
+          {/* Draw layer: captures freehand strokes on empty space, below the
+              discs so players keep their own drags. */}
           <GestureDetector gesture={drawPan}>
             <Animated.View style={StyleSheet.absoluteFill} />
           </GestureDetector>
