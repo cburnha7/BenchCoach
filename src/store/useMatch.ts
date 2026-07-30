@@ -483,16 +483,40 @@ export const useMatch = create<MatchStore>((set, get) => {
       });
     },
 
-    /** Put every on-field player back on their home spot (pre-drag). */
+    /**
+     * Put every on-field player back on their home spot (pre-drag). Safety:
+     * if two would land on the same spot, the extra is moved to a free
+     * formation slot (and that becomes its home) so nobody ever stacks.
+     */
     resetPositions: () => {
-      patch((m) => ({
-        ...m,
-        roster: m.roster.map((p) =>
-          p.onField
-            ? { ...p, x: p.homeX ?? p.x, y: p.homeY ?? p.y }
-            : p
-        ),
-      }));
+      patch((m) => {
+        const slots = FORMATIONS[m.size][m.formationIdx].slots;
+        const CLOSE = 24 * 24; // squared distance that counts as "same spot"
+        const placed: { x: number; y: number }[] = [];
+        const near = (x: number, y: number) =>
+          placed.some((q) => (q.x - x) ** 2 + (q.y - y) ** 2 < CLOSE);
+
+        const roster = m.roster.map((p) => {
+          if (!p.onField) return p;
+          const hx = p.homeX ?? p.x;
+          const hy = p.homeY ?? p.y;
+          if (!near(hx, hy)) {
+            placed.push({ x: hx, y: hy });
+            return { ...p, x: hx, y: hy };
+          }
+          // Collision — relocate to a free formation slot and re-home there.
+          const free = slots.find((s) => !near(s.x, s.y));
+          if (free) {
+            placed.push({ x: free.x, y: free.y });
+            return { ...p, x: free.x, y: free.y, homeX: free.x, homeY: free.y };
+          }
+          // No slot free (shouldn't happen) — nudge sideways so it's visible.
+          const nx = hx + 55;
+          placed.push({ x: nx, y: hy });
+          return { ...p, x: nx, y: hy, homeX: nx, homeY: hy };
+        });
+        return { ...m, roster };
+      });
     },
 
     swap: (outId, inId) => {
