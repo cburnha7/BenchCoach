@@ -145,7 +145,7 @@ export default function TeamScreen() {
       <Text
         style={[styles.btnText, queued > 0 ? styles.btnTextAlert : styles.btnTextOff]}
       >
-        {queued > 0 ? `Run ${queued}` : 'No subs'}
+        {queued > 0 ? 'Send Em' : 'No subs'}
       </Text>
     </Pressable>
   );
