@@ -41,6 +41,7 @@ function emptyMatch(teamId: string, size: TeamSize): MatchState {
     opponent: { on: false, formationIdx: 0, pos: null, holder: null },
     arrows: [],
     drawings: [],
+    shots: [],
     ghosts: [],
     holder: null,
   };
@@ -120,6 +121,7 @@ type MatchStore = {
     points?: { x: number; y: number }[]
   ) => void;
   addDrawing: (points: { x: number; y: number }[]) => void;
+  toggleShot: (x: number, y: number) => void;
   clearGhosts: () => void;
 
   // Opponent shadow team
@@ -174,6 +176,7 @@ export const useMatch = create<MatchStore>((set, get) => {
         arrows: [],
         ghosts: [],
         drawings: [],
+        shots: [],
         holder: null,
       };
       // Backfill minute entries and home spots for older saved players.
@@ -707,6 +710,7 @@ export const useMatch = create<MatchStore>((set, get) => {
           arrows: [],
           ghosts: [],
           drawings: [],
+          shots: [],
           holder: null,
           opponent: { ...m.opponent, holder: null },
         }),
@@ -717,6 +721,18 @@ export const useMatch = create<MatchStore>((set, get) => {
     addDrawing: (points) => {
       const draw: FreeDraw = { id: makeId('d'), points };
       patch((m) => ({ ...m, drawings: [...m.drawings, draw] }), false);
+    },
+
+    /** Toggle a shot-on-goal marker at (x, y); a second tap nearby clears it. */
+    toggleShot: (x, y) => {
+      patch((m) => {
+        const near = m.shots.find(
+          (s) => (s.x - x) ** 2 + (s.y - y) ** 2 < 60 * 60
+        );
+        return near
+          ? { ...m, shots: m.shots.filter((s) => s.id !== near.id) }
+          : { ...m, shots: [...m.shots, { id: makeId('shot'), x, y }] };
+      }, false);
     },
 
     addGhost: (label, origin, to, carry, opponent, points) => {

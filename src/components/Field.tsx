@@ -12,6 +12,7 @@ import Animated, {
   runOnJS,
   useSharedValue,
 } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { Pitch } from './Pitch';
 import { PlayerDisc, DISC_R } from './PlayerDisc';
 import { OpponentMarker } from './OpponentMarker';
@@ -55,7 +56,13 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   const tapOpponentBall = useMatch((s) => s.tapOpponentBall);
   const addGhost = useMatch((s) => s.addGhost);
   const addDrawing = useMatch((s) => s.addDrawing);
+  const toggleShot = useMatch((s) => s.toggleShot);
   const swapPositions = useMatch((s) => s.swapPositions);
+
+  const registerShot = (x: number, y: number) => {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    toggleShot(x, y);
+  };
 
   const [box, setBox] = useState({ width: 0, height: 0 });
   // Sampled freehand-draw path (flattened x,y,x,y…) in field coordinates.
@@ -213,6 +220,20 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
       runOnJS(addDrawing)(pairs);
     });
 
+  // Double-tap a goal mouth to drop a shot-on-goal burst there.
+  const goalTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .maxDelay(220)
+    .onEnd((e, success) => {
+      if (!success) return;
+      const fx = e.x / scaleX;
+      const fy = e.y / scaleY;
+      if (fx > 220 && fx < 380 && fy < 58) runOnJS(registerShot)(300, 30);
+      else if (fx > 220 && fx < 380 && fy > 716) runOnJS(registerShot)(300, 742);
+    });
+
+  const boardGesture = Gesture.Race(goalTap, drawPan);
+
   return (
     <View style={styles.fill} onLayout={onLayout}>
       {ready && (
@@ -224,7 +245,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
 
           {/* Draw layer: captures freehand strokes on empty space, below the
               discs so players keep their own drags. */}
-          <GestureDetector gesture={drawPan}>
+          <GestureDetector gesture={boardGesture}>
             <Animated.View style={StyleSheet.absoluteFill} />
           </GestureDetector>
 
@@ -232,6 +253,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
             arrows={match.arrows}
             ghosts={match.ghosts}
             drawings={match.drawings}
+            shots={match.shots}
             width={stageW}
             height={stageH}
             scaleX={scaleX}

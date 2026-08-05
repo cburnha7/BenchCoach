@@ -126,6 +126,8 @@ export type MatchState = {
   ghosts: Ghost[];
   /** Freehand lines drawn on the pitch. */
   drawings: FreeDraw[];
+  /** Shot-on-goal burst markers, placed by double-tapping a goal. */
+  shots: { id: string; x: number; y: number }[];
   /** Player currently on the ball, or null. */
   holder: string | null;
 };
