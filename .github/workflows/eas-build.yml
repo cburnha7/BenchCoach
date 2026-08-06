@@ -1,5 +1,9 @@
 name: EAS Build
 
+# Manual-only: builds are run locally with `eas build`. The push trigger was
+# removed so pushes don't fire a CI build that fails without an EXPO_TOKEN
+# secret. To use CI builds, add EXPO_TOKEN in repo Settings → Secrets, then
+# run this workflow from the Actions tab (Run workflow).
 on:
   workflow_dispatch:
     inputs:
@@ -9,8 +13,6 @@ on:
         default: all
         type: choice
         options: [all, ios, android]
-  push:
-    branches: [ main ]
 
 jobs:
   build:
