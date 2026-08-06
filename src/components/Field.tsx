@@ -191,6 +191,10 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   const emptySlots = slots
     .map((s, i) => ({ s, i }))
     .filter(({ i }) => !claimed.has(i));
+  // Red cards drop the effective team size: those spots are man-down holes you
+  // can't fill. The rest are open spots you can tap to bring a player on.
+  const redCount = match.roster.filter((p) => match.cards[p.id] === 'red').length;
+  const fillable = Math.max(0, match.size - redCount - onFieldPlayers.length);
 
   // Freehand doodling on empty space — always available, independent of the
   // tracer. Sits under the discs, so a drag that starts on a player still
@@ -260,19 +264,24 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
             scaleY={scaleY}
           />
 
-          {/* Open starter slots — tap one to bring a player straight on. */}
-          {emptySlots.map(({ s, i }) => (
-            <EmptySlot
-              key={`slot-${i}`}
-              x={s.x}
-              y={s.y}
-              label={labels[i]}
-              scaleX={scaleX}
-              scaleY={scaleY}
-              discScale={discScale}
-              onPress={() => onEmptySlot(s.x, s.y)}
-            />
-          ))}
+          {/* Open starter slots. The first `fillable` are tap-to-fill; any
+              beyond that are man-down holes (a red card) you can't fill. */}
+          {emptySlots.map(({ s, i }, idx) => {
+            const canFill = idx < fillable;
+            return (
+              <EmptySlot
+                key={`slot-${i}`}
+                x={s.x}
+                y={s.y}
+                label={labels[i]}
+                scaleX={scaleX}
+                scaleY={scaleY}
+                discScale={discScale}
+                fillable={canFill}
+                onPress={canFill ? () => onEmptySlot(s.x, s.y) : undefined}
+              />
+            );
+          })}
 
           {match.opponent.on &&
             match.opponent.pos?.map((p, i) => (
@@ -344,7 +353,11 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   );
 }
 
-/** A dashed ghost disc marking an unfilled starter position; tap to fill it. */
+/**
+ * A dashed ghost disc marking an unfilled starter position. Fillable slots tap
+ * to bring a player on; a man-down hole (from a red card) is red and inert —
+ * you play short until you drag another player over to cover it.
+ */
 function EmptySlot({
   x,
   y,
@@ -352,6 +365,7 @@ function EmptySlot({
   scaleX,
   scaleY,
   discScale,
+  fillable,
   onPress,
 }: {
   x: number;
@@ -360,7 +374,8 @@ function EmptySlot({
   scaleX: number;
   scaleY: number;
   discScale: number;
-  onPress: () => void;
+  fillable: boolean;
+  onPress?: () => void;
 }) {
   // Touch target matches a player disc's padded box so it's easy to hit.
   const size = (DISC_R + 14) * 2 * discScale;
@@ -369,6 +384,7 @@ function EmptySlot({
   return (
     <Pressable
       onPress={onPress}
+      disabled={!fillable}
       style={({ pressed }) => [
         styles.slotTouch,
         {
@@ -378,18 +394,25 @@ function EmptySlot({
             { translateX: x * scaleX - half },
             { translateY: y * scaleY - half },
           ],
-          opacity: pressed ? 0.6 : 1,
+          opacity: pressed && fillable ? 0.6 : 1,
         },
       ]}
     >
       <View
         style={[
           styles.slot,
+          !fillable && styles.slotDown,
           { width: inner, height: inner, borderRadius: inner / 2 },
         ]}
       >
-        <Text style={[styles.slotText, { fontSize: Math.max(9, 12 * discScale) }]}>
-          {label}
+        <Text
+          style={[
+            styles.slotText,
+            !fillable && styles.slotTextDown,
+            { fontSize: Math.max(9, 12 * discScale) },
+          ]}
+        >
+          {fillable ? label : `${label} −1`}
         </Text>
       </View>
     </Pressable>
@@ -419,6 +442,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.3,
   },
+  // Man-down hole from a red card: red and inert.
+  slotDown: {
+    borderColor: rgba('#e23b46', 0.7),
+    backgroundColor: rgba('#e23b46', 0.12),
+  },
+  slotTextDown: { color: rgba('#ff9aa2', 0.95) },
   stage: {
     position: 'relative',
     shadowColor: '#000',

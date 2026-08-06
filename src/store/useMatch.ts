@@ -351,12 +351,26 @@ export const useMatch = create<MatchStore>((set, get) => {
     },
 
     toggleScratch: (id) => {
-      patch((m) => ({
-        ...m,
-        scratched: m.scratched.includes(id)
-          ? m.scratched.filter((s) => s !== id)
-          : [...m.scratched, id],
-      }));
+      patch((m) => {
+        if (m.scratched.includes(id)) {
+          // Un-scratch: available again; they sit on the bench.
+          return { ...m, scratched: m.scratched.filter((s) => s !== id) };
+        }
+        // Scratch: mark them and vacate their spot if they were on the field,
+        // leaving an open (fillable) slot.
+        const player = m.roster.find((p) => p.id === id);
+        const scratched = [...m.scratched, id];
+        if (!player?.onField) return { ...m, scratched };
+        return {
+          ...m,
+          scratched,
+          holder: m.holder === id ? null : m.holder,
+          roster: benchLayout(
+            m.roster.map((p) => (p.id === id ? { ...p, onField: false } : p))
+          ),
+          queue: m.queue.filter((q) => q.out !== id && q.in !== id),
+        };
+      });
     },
 
     giveCard: (id, card) => {
@@ -578,7 +592,7 @@ export const useMatch = create<MatchStore>((set, get) => {
     bringOn: (id) => {
       patch((m) => {
         const onFieldCount = m.roster.filter((p) => p.onField).length;
-        if (onFieldCount >= m.size) return m;
+        if (onFieldCount >= fieldCap(m)) return m;
         const slots = FORMATIONS[m.size][m.formationIdx].slots;
         const taken = m.roster
           .filter((p) => p.onField)
@@ -603,7 +617,7 @@ export const useMatch = create<MatchStore>((set, get) => {
     bringOnAt: (id, x, y) => {
       patch((m) => {
         const onFieldCount = m.roster.filter((p) => p.onField).length;
-        if (onFieldCount >= m.size) return m;
+        if (onFieldCount >= fieldCap(m)) return m;
         return {
           ...m,
           roster: benchLayout(
@@ -843,3 +857,10 @@ AppState.addEventListener('change', (state) => {
 
 export const onFieldCount = (m: MatchState) =>
   m.roster.filter((p) => p.onField).length;
+
+/** How many red cards this game — each one drops the effective team size. */
+export const redCardCount = (m: MatchState) =>
+  m.roster.filter((p) => m.cards[p.id] === 'red').length;
+
+/** Effective on-field cap: team size minus anyone sent off. */
+export const fieldCap = (m: MatchState) => m.size - redCardCount(m);
