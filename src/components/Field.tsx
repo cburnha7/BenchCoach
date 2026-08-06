@@ -312,9 +312,10 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
             />
           ))}
 
-          {/* Shot burst emoji, drawn at the goal end of each shot line. */}
+          {/* Soccer ball at the goal end of each shot line. Drawn last, so the
+              line runs into the ball's centre but sits behind it. */}
           {match.shots.map((s) => {
-            const size = Math.round(30 * discScale);
+            const size = Math.round(40 * discScale);
             return (
               <View
                 key={s.id}
@@ -333,7 +334,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
                   ],
                 }}
               >
-                <Text style={{ fontSize: Math.round(size * 0.92) }}>💥</Text>
+                <Text style={{ fontSize: Math.round(size * 0.92) }}>⚽</Text>
               </View>
             );
           })}

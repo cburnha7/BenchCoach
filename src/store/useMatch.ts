@@ -677,8 +677,15 @@ export const useMatch = create<MatchStore>((set, get) => {
       const player = m.roster.find((p) => p.id === id);
       if (!player || !player.onField) return;
 
+      // Only one ball on the board — taking it clears any opponent holder.
+      const takeBall = (cur: MatchState) => ({
+        ...cur,
+        holder: id,
+        opponent: { ...cur.opponent, holder: null },
+      });
+
       if (m.holder === null) {
-        patch((cur) => ({ ...cur, holder: id }), false);
+        patch(takeBall, false);
         return;
       }
       if (m.holder === id) {
@@ -687,7 +694,7 @@ export const useMatch = create<MatchStore>((set, get) => {
       }
       const from = m.roster.find((p) => p.id === m.holder);
       if (!from) {
-        patch((cur) => ({ ...cur, holder: id }), false);
+        patch(takeBall, false);
         return;
       }
       const arrow: PassArrow = {
@@ -697,7 +704,12 @@ export const useMatch = create<MatchStore>((set, get) => {
         to: { x: player.x, y: player.y },
       };
       patch(
-        (cur) => ({ ...cur, arrows: [...cur.arrows, arrow], holder: id }),
+        (cur) => ({
+          ...cur,
+          arrows: [...cur.arrows, arrow],
+          holder: id,
+          opponent: { ...cur.opponent, holder: null },
+        }),
         false
       );
     },
@@ -790,18 +802,17 @@ export const useMatch = create<MatchStore>((set, get) => {
       });
     },
 
-    /** Toggle which opponent has the ball (or clear it). */
+    /** Toggle which opponent has the ball; taking it clears our player's ball. */
     tapOpponentBall: (index) => {
-      patch(
-        (m) => ({
+      patch((m) => {
+        const next = m.opponent.holder === index ? null : index;
+        return {
           ...m,
-          opponent: {
-            ...m.opponent,
-            holder: m.opponent.holder === index ? null : index,
-          },
-        }),
-        false
-      );
+          // Only one ball on the board — clear ours when an opponent takes it.
+          holder: next === null ? m.holder : null,
+          opponent: { ...m.opponent, holder: next },
+        };
+      }, false);
     },
 
     moveOpponent: (index, x, y) => {
