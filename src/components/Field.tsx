@@ -311,6 +311,32 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
               onTap={onPlayerAction}
             />
           ))}
+
+          {/* Shot burst emoji, drawn at the goal end of each shot line. */}
+          {match.shots.map((s) => {
+            const size = Math.round(30 * discScale);
+            return (
+              <View
+                key={s.id}
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  width: size,
+                  height: size,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transform: [
+                    { translateX: s.x * scaleX - size / 2 },
+                    { translateY: s.y * scaleY - size / 2 },
+                  ],
+                }}
+              >
+                <Text style={{ fontSize: Math.round(size * 0.92) }}>💥</Text>
+              </View>
+            );
+          })}
         </View>
       )}
     </View>

@@ -729,9 +729,19 @@ export const useMatch = create<MatchStore>((set, get) => {
         const near = m.shots.find(
           (s) => (s.x - x) ** 2 + (s.y - y) ** 2 < 60 * 60
         );
-        return near
-          ? { ...m, shots: m.shots.filter((s) => s.id !== near.id) }
-          : { ...m, shots: [...m.shots, { id: makeId('shot'), x, y }] };
+        if (near) {
+          return { ...m, shots: m.shots.filter((s) => s.id !== near.id) };
+        }
+        // Line origin: the ball holder if there is one, else out from the goal.
+        const holder = m.holder
+          ? m.roster.find((p) => p.id === m.holder && p.onField)
+          : null;
+        const fromX = holder ? holder.x : 300;
+        const fromY = holder ? holder.y : y < 400 ? y + 150 : y - 150;
+        return {
+          ...m,
+          shots: [...m.shots, { id: makeId('shot'), x, y, fromX, fromY }],
+        };
       }, false);
     },
 

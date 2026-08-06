@@ -34,26 +34,18 @@ type Props = {
   arrows: PassArrow[];
   ghosts: Ghost[];
   drawings: FreeDraw[];
-  shots: { id: string; x: number; y: number }[];
+  shots: {
+    id: string;
+    x: number;
+    y: number;
+    fromX: number;
+    fromY: number;
+  }[];
   width: number;
   height: number;
   scaleX: number;
   scaleY: number;
 };
-
-/** Eight short rays radiating from a shot marker. */
-function burstPath(cx: number, cy: number) {
-  const p = Skia.Path.Make();
-  const rays = 8;
-  const ri = 15;
-  const ro = 27;
-  for (let i = 0; i < rays; i++) {
-    const a = (i / rays) * Math.PI * 2;
-    p.moveTo(cx + Math.cos(a) * ri, cy + Math.sin(a) * ri);
-    p.lineTo(cx + Math.cos(a) * ro, cy + Math.sin(a) * ro);
-  }
-  return p;
-}
 
 /** Build a line trimmed at both ends, with an arrowhead at the far end. */
 function shaft(
@@ -147,6 +139,17 @@ function TacticsLayerBase({
         .filter((d) => d.points.length >= 2)
         .map((d) => ({ id: d.id, path: curvePath(d.points) })),
     [drawings]
+  );
+
+  const shotLines = useMemo(
+    () =>
+      shots.map((s) => {
+        const p = Skia.Path.Make();
+        p.moveTo(s.fromX, s.fromY);
+        p.lineTo(s.x, s.y);
+        return { id: s.id, path: p };
+      }),
+    [shots]
   );
 
   if (
@@ -246,26 +249,16 @@ function TacticsLayerBase({
           </Group>
         ))}
 
-        {/* Shot-on-goal bursts, drawn on top of everything. */}
-        {shots.map((s) => (
-          <Group key={s.id}>
-            <Path
-              path={burstPath(s.x, s.y)}
-              style="stroke"
-              strokeWidth={3.5}
-              strokeCap="round"
-              color={theme.ball}
-            />
-            <Circle cx={s.x} cy={s.y} r={13} color="#ffffff" />
-            <Circle
-              cx={s.x}
-              cy={s.y}
-              r={13}
-              style="stroke"
-              strokeWidth={3}
-              color={theme.pass}
-            />
-          </Group>
+        {/* Shot lines into the goal; the burst emoji is drawn over them. */}
+        {shotLines.map((s) => (
+          <Path
+            key={s.id}
+            path={s.path}
+            style="stroke"
+            strokeWidth={LINE_W + 1}
+            strokeCap="round"
+            color={theme.pass}
+          />
         ))}
       </Group>
     </Canvas>
