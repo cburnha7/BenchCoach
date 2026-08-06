@@ -412,7 +412,7 @@ function EmptySlot({
             { fontSize: Math.max(9, 12 * discScale) },
           ]}
         >
-          {fillable ? label : `${label} −1`}
+          {label}
         </Text>
       </View>
     </Pressable>
