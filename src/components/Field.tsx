@@ -17,7 +17,8 @@ import { Pitch } from './Pitch';
 import { PlayerDisc, DISC_R } from './PlayerDisc';
 import { OpponentMarker } from './OpponentMarker';
 import { TacticsLayer } from './TacticsLayer';
-import { FIELD_W, FIELD_H, FORMATIONS, positionLabels } from '../lib/formations';
+import { FIELD_W, FIELD_H } from '../lib/formations';
+import { formationsFor, labelsFor, sportConfig } from '../lib/sports';
 import { useMatch } from '../store/useMatch';
 import { firstName } from '../lib/types';
 import { radius, rgba } from '../lib/theme';
@@ -170,9 +171,15 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   // Empty starter slots: claim the nearest formation slot for each on-field
   // player, then mark whatever is left as an open spot. Robust to dragging —
   // a moved player still holds the slot closest to where they ended up.
-  const slots = FORMATIONS[match.size][match.formationIdx].slots;
-  const labels = positionLabels(match.size, match.formationIdx);
-  const oppLabels = positionLabels(match.size, match.opponent.formationIdx, true);
+  const slots =
+    formationsFor(match.sport, match.size)[match.formationIdx]?.slots ?? [];
+  const labels = labelsFor(match.sport, match.size, match.formationIdx);
+  const oppLabels = labelsFor(
+    match.sport,
+    match.size,
+    match.opponent.formationIdx,
+    true
+  );
   const onFieldPlayers = match.roster.filter((p) => p.onField);
   const claimed = new Set<number>();
   onFieldPlayers.forEach((p) => {
@@ -243,7 +250,11 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
       {ready && (
         <View style={[styles.stage, { width: stageW, height: stageH }]}>
           <View style={styles.clip}>
-            <Pitch width={stageW} height={stageH} />
+            <Pitch
+              width={stageW}
+              height={stageH}
+              surface={sportConfig(match.sport).surface}
+            />
           </View>
           <View pointerEvents="none" style={styles.rim} />
 
@@ -321,10 +332,11 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
             />
           ))}
 
-          {/* Soccer ball at the goal end of each shot line. Drawn last, so the
-              line runs into the ball's centre but sits behind it. */}
+          {/* Ball at the goal end of each shot line. Drawn last, so the line
+              runs into the ball's centre but sits behind it. */}
           {match.shots.map((s) => {
             const size = Math.round(40 * discScale);
+            const ball = sportConfig(match.sport).ballEmoji;
             return (
               <View
                 key={s.id}
@@ -343,7 +355,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
                   ],
                 }}
               >
-                <Text style={{ fontSize: Math.round(size * 0.92) }}>⚽</Text>
+                <Text style={{ fontSize: Math.round(size * 0.92) }}>{ball}</Text>
               </View>
             );
           })}

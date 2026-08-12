@@ -78,9 +78,9 @@ export default function TeamScreen() {
 
   useEffect(() => {
     if (!team) return;
-    void load(team.id, team.size);
+    void load(team.id, team.size, team.sport);
     return () => unload();
-  }, [team?.id, team?.size, load, unload, team]);
+  }, [team?.id, team?.size, team?.sport, load, unload, team]);
 
   if (!hydrated) return <View style={styles.screen} />;
 
@@ -153,6 +153,7 @@ export default function TeamScreen() {
   const formationPicker = (fill: boolean) =>
     ready ? (
       <FormationPicker
+        sport={team.sport}
         size={team.size}
         index={match.formationIdx}
         onSelect={setFormation}

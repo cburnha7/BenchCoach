@@ -2,11 +2,14 @@ import type { TeamSize } from './formations';
 
 export type { TeamSize };
 
+/** The sports Bench Coach supports. Everything sport-specific keys off this. */
+export type Sport = 'soccer' | 'basketball';
+
 /** A team as it appears on the home screen. */
 export type Team = {
   id: string;
   name: string;
-  sport: 'soccer';
+  sport: Sport;
   size: TeamSize;
   color: string;
   /** Local file URI for the team photo, if set. */
@@ -102,6 +105,8 @@ export type GoalEvent = {
 
 export type MatchState = {
   teamId: string;
+  /** The team's sport, so the store can look up the right geometry. */
+  sport: Sport;
   size: TeamSize;
   roster: Player[];
   minutes: Record<string, number>;

@@ -2,8 +2,12 @@
 // Field coordinate space is 600 x 840; the pitch spans y 8..768.
 
 export type Slot = { x: number; y: number };
-export type Formation = { name: string; slots: Slot[] };
-export type TeamSize = 7 | 9 | 11;
+/** `labels` is authored per-slot for sports (basketball) that don't derive
+ *  position codes from geometry the way soccer does. */
+export type Formation = { name: string; slots: Slot[]; labels?: string[] };
+/** Widened to a plain number so other sports (basketball 5v5) fit the same
+ *  types; soccer still only ever uses 7 / 9 / 11. */
+export type TeamSize = number;
 
 export const FIELD_W = 600;
 export const FIELD_H = 840;

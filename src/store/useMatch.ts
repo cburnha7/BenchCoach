@@ -1,12 +1,8 @@
 import { AppState } from 'react-native';
 import { create } from 'zustand';
 import { storage, matchKey } from './storage';
-import {
-  FORMATIONS,
-  BENCH_Y,
-  mirrorSlots,
-  type TeamSize,
-} from '../lib/formations';
+import { BENCH_Y, type TeamSize } from '../lib/formations';
+import { formationsFor, mirrorSlotsFor } from '../lib/sports';
 import {
   clamp,
   makeId,
@@ -17,15 +13,23 @@ import {
   type PassArrow,
   type Player,
   type QueuedSub,
+  type Sport,
 } from '../lib/types';
+
+/** The slots of the current formation, safe against unknown size/index. */
+const slotsOf = (m: MatchState) =>
+  formationsFor(m.sport, m.size)[m.formationIdx]?.slots ?? [];
+/** How many formations this sport offers for this team size. */
+const formCount = (m: MatchState) => formationsFor(m.sport, m.size).length;
 
 const TICK_MS = 250;
 const SAVE_EVERY_S = 5;
 const MAX_DELTA_S = 2;
 
-function emptyMatch(teamId: string, size: TeamSize): MatchState {
+function emptyMatch(teamId: string, size: TeamSize, sport: Sport): MatchState {
   return {
     teamId,
+    sport,
     size,
     roster: [],
     minutes: {},
@@ -68,7 +72,7 @@ type MatchStore = {
   /** Bumped on every tick so subscribed components re-render cheaply. */
   tickCount: number;
 
-  load: (teamId: string, size: TeamSize) => Promise<void>;
+  load: (teamId: string, size: TeamSize, sport: Sport) => Promise<void>;
   unload: () => void;
   save: () => Promise<void>;
 
@@ -157,20 +161,21 @@ export const useMatch = create<MatchStore>((set, get) => {
     running: false,
     tickCount: 0,
 
-    load: async (teamId, size) => {
+    load: async (teamId, size, sport) => {
       stop();
       const saved = await storage.read<MatchState>(matchKey(teamId));
-      const base = saved ?? emptyMatch(teamId, size);
-      // Team size can change on the team record after a match was saved.
+      const base = saved ?? emptyMatch(teamId, size, sport);
+      // Team size / sport can change on the team record after a match was saved.
       const match: MatchState = {
-        ...emptyMatch(teamId, size),
+        ...emptyMatch(teamId, size, sport),
         ...base,
         teamId,
+        sport,
         size,
         formationIdx: clamp(
           base.formationIdx ?? 0,
           0,
-          FORMATIONS[size].length - 1
+          Math.max(0, formationsFor(sport, size).length - 1)
         ),
         // The tactics board starts clean each session.
         arrows: [],
@@ -274,7 +279,7 @@ export const useMatch = create<MatchStore>((set, get) => {
         let x = 300;
         let y = BENCH_Y;
         if (goOn) {
-          const slots = FORMATIONS[m.size][m.formationIdx].slots;
+          const slots = slotsOf(m);
           const taken = onField.map((p) => `${p.x},${p.y}`);
           const free =
             slots.find((s) => !taken.includes(`${s.x},${s.y}`)) ??
@@ -477,7 +482,7 @@ export const useMatch = create<MatchStore>((set, get) => {
     setFormation: (idx) => {
       patch((m) => ({
         ...m,
-        formationIdx: clamp(idx, 0, FORMATIONS[m.size].length - 1),
+        formationIdx: clamp(idx, 0, Math.max(0, formCount(m) - 1)),
       }));
       get().applyFormation();
     },
@@ -486,7 +491,7 @@ export const useMatch = create<MatchStore>((set, get) => {
       // Picking a formation defines the home layout: on-field players take the
       // slots in order and those become their Reset positions.
       patch((m) => {
-        const slots = FORMATIONS[m.size][m.formationIdx].slots;
+        const slots = slotsOf(m);
         let i = 0;
         const roster = m.roster.map((p) => {
           if (!p.onField) return p;
@@ -507,7 +512,7 @@ export const useMatch = create<MatchStore>((set, get) => {
      */
     resetPositions: () => {
       patch((m) => {
-        const slots = FORMATIONS[m.size][m.formationIdx].slots;
+        const slots = slotsOf(m);
         const CLOSE = 24 * 24; // squared distance that counts as "same spot"
         const placed: { x: number; y: number }[] = [];
         const near = (x: number, y: number) =>
@@ -593,7 +598,7 @@ export const useMatch = create<MatchStore>((set, get) => {
       patch((m) => {
         const onFieldCount = m.roster.filter((p) => p.onField).length;
         if (onFieldCount >= fieldCap(m)) return m;
-        const slots = FORMATIONS[m.size][m.formationIdx].slots;
+        const slots = slotsOf(m);
         const taken = m.roster
           .filter((p) => p.onField)
           .map((p) => `${p.x},${p.y}`);
@@ -795,7 +800,7 @@ export const useMatch = create<MatchStore>((set, get) => {
         const on = !m.opponent.on;
         const pos =
           on && (!m.opponent.pos || m.opponent.pos.length !== m.size)
-            ? mirrorSlots(m.size, m.opponent.formationIdx)
+            ? mirrorSlotsFor(m.sport, m.size, m.opponent.formationIdx)
             : m.opponent.pos;
         return { ...m, opponent: { ...m.opponent, on, pos, holder: null } };
       });
@@ -803,13 +808,13 @@ export const useMatch = create<MatchStore>((set, get) => {
 
     setOpponentFormation: (idx) => {
       patch((m) => {
-        const formationIdx = clamp(idx, 0, FORMATIONS[m.size].length - 1);
+        const formationIdx = clamp(idx, 0, Math.max(0, formCount(m) - 1));
         return {
           ...m,
           opponent: {
             ...m.opponent,
             formationIdx,
-            pos: mirrorSlots(m.size, formationIdx),
+            pos: mirrorSlotsFor(m.sport, m.size, formationIdx),
             holder: null,
           },
         };
@@ -842,7 +847,7 @@ export const useMatch = create<MatchStore>((set, get) => {
         ...m,
         opponent: {
           ...m.opponent,
-          pos: mirrorSlots(m.size, m.opponent.formationIdx),
+          pos: mirrorSlotsFor(m.sport, m.size, m.opponent.formationIdx),
         },
       }));
     },

@@ -1,16 +1,20 @@
 import { create } from 'zustand';
-import { storage, TEAMS_KEY, matchKey } from './storage';
+import { storage, TEAMS_KEY, SPORT_KEY, matchKey } from './storage';
 import {
   DEFAULT_COLOR,
   makeId,
+  type Sport,
   type Team,
   type TeamSize,
 } from '../lib/types';
 
 type TeamsState = {
   teams: Team[];
+  /** The app-wide sport mode. Filters the home list; new teams inherit it. */
+  sport: Sport;
   hydrated: boolean;
   hydrate: () => Promise<void>;
+  setSport: (sport: Sport) => Promise<void>;
   addTeam: (input: {
     name: string;
     size: TeamSize;
@@ -23,19 +27,28 @@ type TeamsState = {
 
 export const useTeams = create<TeamsState>((set, get) => ({
   teams: [],
+  sport: 'soccer',
   hydrated: false,
 
   hydrate: async () => {
     if (get().hydrated) return;
-    const saved = await storage.read<Team[]>(TEAMS_KEY);
-    set({ teams: saved ?? [], hydrated: true });
+    const [saved, sport] = await Promise.all([
+      storage.read<Team[]>(TEAMS_KEY),
+      storage.read<Sport>(SPORT_KEY),
+    ]);
+    set({ teams: saved ?? [], sport: sport ?? 'soccer', hydrated: true });
+  },
+
+  setSport: async (sport) => {
+    set({ sport });
+    await storage.write(SPORT_KEY, sport);
   },
 
   addTeam: async ({ name, size, color }) => {
     const team: Team = {
       id: makeId(),
       name: name.trim() || 'New Team',
-      sport: 'soccer',
+      sport: get().sport,
       size,
       color: color ?? DEFAULT_COLOR,
     };

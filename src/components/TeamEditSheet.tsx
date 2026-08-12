@@ -13,12 +13,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTeams } from '../store/useTeams';
-import {
-  TEAM_COLORS,
-  TEAM_SIZES,
-  formatSize,
-  type TeamSize,
-} from '../lib/types';
+import { TEAM_COLORS, formatSize, type TeamSize } from '../lib/types';
+import { sizesFor } from '../lib/sports';
 import { theme, radius, rgba, mix } from '../lib/theme';
 
 type Props = {
@@ -165,7 +161,7 @@ export function TeamEditSheet({ teamId, onClose }: Props) {
 
           <Text style={styles.label}>Players on the field</Text>
           <View style={styles.sizeRow}>
-            {TEAM_SIZES.map((s) => (
+            {sizesFor(team.sport).map((s) => (
               <Pressable
                 key={s}
                 style={[styles.sizeBtn, team.size === s && styles.sizeOn]}

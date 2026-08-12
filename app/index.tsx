@@ -15,15 +15,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DraggableTeamList } from '../src/components/DraggableTeamList';
 import { TeamEditSheet } from '../src/components/TeamEditSheet';
+import { SportToggle } from '../src/components/SportToggle';
 import { useTeams } from '../src/store/useTeams';
 import {
   DEFAULT_COLOR,
   TEAM_COLORS,
-  TEAM_SIZES,
   formatSize,
   type Team,
   type TeamSize,
 } from '../src/lib/types';
+import { SPORTS, sizesFor, defaultSize } from '../src/lib/sports';
 import { theme, radius, mix } from '../src/lib/theme';
 
 const MAX_TEAMS = 5;
@@ -32,17 +33,21 @@ const GAP = 14;
 export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const teams = useTeams((s) => s.teams);
+  const allTeams = useTeams((s) => s.teams);
+  const sport = useTeams((s) => s.sport);
   const hydrated = useTeams((s) => s.hydrated);
   const hydrate = useTeams((s) => s.hydrate);
   const addTeam = useTeams((s) => s.addTeam);
   const reorder = useTeams((s) => s.reorder);
 
+  // Only the current sport's teams show; new teams inherit the sport.
+  const teams = allTeams.filter((t) => t.sport === sport);
+
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [size, setSize] = useState<TeamSize>(9);
+  const [size, setSize] = useState<TeamSize>(defaultSize(sport));
   const [color, setColor] = useState<string>(DEFAULT_COLOR);
   // Measured height of the list area, so cards can fill it.
   const [listH, setListH] = useState(0);
@@ -50,6 +55,22 @@ export default function Home() {
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  // Keep the size selector valid for the active sport (e.g. 5v5 for hoops).
+  useEffect(() => {
+    setSize(defaultSize(sport));
+  }, [sport]);
+
+  // Drag-reorder gives indices within the filtered list; map them back to the
+  // full store array so only same-sport teams shuffle.
+  const handleReorder = (from: number, to: number) => {
+    const movedId = teams[from]?.id;
+    const targetId = teams[to]?.id;
+    if (!movedId || !targetId) return;
+    const f = allTeams.findIndex((t) => t.id === movedId);
+    const t2 = allTeams.findIndex((t) => t.id === targetId);
+    if (f >= 0 && t2 >= 0) reorder(f, t2);
+  };
 
   // Cards divide the list area evenly so they always fit with no scrolling:
   // full height for one team, halves for two, thirds for three, and so on.
@@ -68,7 +89,7 @@ export default function Home() {
     const id = await addTeam({ name, size, color });
     setCreating(false);
     setName('');
-    setSize(9);
+    setSize(defaultSize(sport));
     setColor(DEFAULT_COLOR);
     router.push(`/team/${id}`);
   };
@@ -116,7 +137,9 @@ export default function Home() {
         <Text style={styles.cardName} numberOfLines={1}>
           {item.name}
         </Text>
-        <Text style={styles.cardMeta}>{formatSize(item.size)} · Soccer</Text>
+        <Text style={styles.cardMeta}>
+          {formatSize(item.size)} · {SPORTS[item.sport].label}
+        </Text>
       </View>
 
       {editing && (
@@ -132,12 +155,12 @@ export default function Home() {
       <StatusBar style="dark" />
       <Stack.Screen
         options={{
-          title: 'Bench Coach',
+          headerTitle: () => <SportToggle />,
+          headerTitleAlign: 'center',
           headerTransparent: false,
           headerShadowVisible: false,
           headerStyle: { backgroundColor: '#ffffff' },
           headerTintColor: '#0e1320',
-          headerTitleStyle: { color: '#0e1320', fontWeight: '800' },
           headerRight: () => (
             <Pressable
               onPress={() => setEditing((e) => !e)}
@@ -174,7 +197,7 @@ export default function Home() {
           <DraggableTeamList
             teams={teams}
             editing={editing}
-            onReorder={reorder}
+            onReorder={handleReorder}
             renderItem={renderTeam}
             cardHeight={cardH}
             gap={GAP}
@@ -217,7 +240,7 @@ export default function Home() {
 
           <Text style={styles.label}>Players on the field</Text>
           <View style={styles.sizeRow}>
-            {TEAM_SIZES.map((s) => (
+            {sizesFor(sport).map((s) => (
               <Pressable
                 key={s}
                 style={[styles.sizeBtn, size === s && styles.sizeOn]}

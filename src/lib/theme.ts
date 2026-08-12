@@ -21,6 +21,12 @@ export const theme = {
   turfAlt: '#2f7c49',
   chalk: 'rgba(255,255,255,0.5)',
 
+  // Court — basketball hardwood, drawn in place of the pitch for hoops.
+  court: '#7c5230',
+  courtAlt: '#835a37',
+  courtPaint: '#5f3f22',
+  courtLine: 'rgba(255,255,255,0.5)',
+
   // Tactics layer — from --pass / --carry / --run
   pass: '#ef4651',
   carry: '#e23b46',

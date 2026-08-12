@@ -36,4 +36,5 @@ export const storage = {
 };
 
 export const TEAMS_KEY = 'bc_teams_v1';
+export const SPORT_KEY = 'bc_sport_v1';
 export const matchKey = (teamId: string) => `bc_match_v1_${teamId}`;

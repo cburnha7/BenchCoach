@@ -57,6 +57,7 @@ export function BoardSettings({
         {match.opponent.on && (
           <View style={styles.oppFormation}>
             <FormationPicker
+              sport={match.sport}
               size={match.size}
               index={match.opponent.formationIdx}
               onSelect={setOpponentFormation}

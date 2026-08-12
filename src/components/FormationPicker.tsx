@@ -8,10 +8,13 @@ import {
   View,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { FORMATIONS, type TeamSize } from '../lib/formations';
+import { type TeamSize } from '../lib/formations';
+import { formationsFor } from '../lib/sports';
+import type { Sport } from '../lib/types';
 import { theme, radius, CONTROL_H } from '../lib/theme';
 
 type Props = {
+  sport: Sport;
   size: TeamSize;
   index: number;
   onSelect: (index: number) => void;
@@ -32,6 +35,7 @@ type Props = {
  * current shape at all times and puts every option one tap away.
  */
 export function FormationPicker({
+  sport,
   size,
   index,
   onSelect,
@@ -40,7 +44,7 @@ export function FormationPicker({
   title = 'Formation',
 }: Props) {
   const [open, setOpen] = useState(false);
-  const formations = FORMATIONS[size];
+  const formations = formationsFor(sport, size);
   const current = formations[index];
 
   const choose = (i: number) => {
