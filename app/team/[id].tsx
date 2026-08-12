@@ -16,6 +16,7 @@ import { BoardSettings } from '../../src/components/BoardSettings';
 import { ScoreBoard } from '../../src/components/ScoreBoard';
 import { GoalSheet } from '../../src/components/GoalSheet';
 import { GoalLogSheet } from '../../src/components/GoalLogSheet';
+import { ThemScoreSheet } from '../../src/components/ThemScoreSheet';
 import { GameSheet } from '../../src/components/GameSheet';
 import { RosterSheet } from '../../src/components/RosterSheet';
 import { SubSheet } from '../../src/components/SubSheet';
@@ -69,6 +70,7 @@ export default function TeamScreen() {
   );
   const [goalOpen, setGoalOpen] = useState(false);
   const [goalLogOpen, setGoalLogOpen] = useState(false);
+  const [themOpen, setThemOpen] = useState(false);
   const [gameOpen, setGameOpen] = useState(false);
   const [trailsOn, setTrailsOn] = useState(false);
 
@@ -189,6 +191,7 @@ export default function TeamScreen() {
               color={color}
               onAddUs={() => setGoalOpen(true)}
               onRemoveUs={() => setGoalLogOpen(true)}
+              onAddThem={() => setThemOpen(true)}
               onOpenOverview={() => setGameOpen(true)}
             />
           )}
@@ -201,6 +204,7 @@ export default function TeamScreen() {
               color={color}
               onAddUs={() => setGoalOpen(true)}
               onRemoveUs={() => setGoalLogOpen(true)}
+              onAddThem={() => setThemOpen(true)}
               onOpenOverview={() => setGameOpen(true)}
             />
           )}
@@ -278,6 +282,7 @@ export default function TeamScreen() {
         onClose={() => setGoalLogOpen(false)}
         color={color}
       />
+      <ThemScoreSheet visible={themOpen} onClose={() => setThemOpen(false)} />
       <GameSheet
         visible={gameOpen}
         onClose={() => setGameOpen(false)}

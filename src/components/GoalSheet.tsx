@@ -28,6 +28,8 @@ export function GoalSheet({ visible, onClose, color }: Props) {
 
   const [scorer, setScorer] = useState<string | null>(null);
   const [assist, setAssist] = useState<string | null>(null);
+  // Points for this basket (basketball only); soccer always scores 1.
+  const [points, setPoints] = useState(2);
   // Remembers the last tap so a quick second tap on the same player reads as a
   // double-tap (assist) and rolls back the scorer that the first tap set.
   const last = useRef<{ id: string | null; t: number; prev: string | null }>({
@@ -40,12 +42,14 @@ export function GoalSheet({ visible, onClose, color }: Props) {
     if (visible) {
       setScorer(null);
       setAssist(null);
+      setPoints(2);
       last.current = { id: null, t: 0, prev: null };
     }
   }, [visible]);
 
   if (!match) return null;
 
+  const isHoops = match.sport === 'basketball';
   const players = match.roster.filter(
     (p) => p.onField && !match.scratched.includes(p.id)
   );
@@ -67,12 +71,12 @@ export function GoalSheet({ visible, onClose, color }: Props) {
 
   const submit = () => {
     if (!scorer) return;
-    recordGoal(scorer, assist);
+    recordGoal(scorer, assist, isHoops ? points : 1);
     onClose();
   };
 
   const justAdd = () => {
-    recordGoal(null, null);
+    recordGoal(null, null, isHoops ? points : 1);
     onClose();
   };
 
@@ -95,7 +99,11 @@ export function GoalSheet({ visible, onClose, color }: Props) {
         <Text style={styles.name} numberOfLines={1}>
           {p.name}
         </Text>
-        {isScorer && <Text style={[styles.tag, { color: theme.live }]}>GOAL</Text>}
+        {isScorer && (
+          <Text style={[styles.tag, { color: theme.live }]}>
+            {isHoops ? 'SCORE' : 'GOAL'}
+          </Text>
+        )}
         {isAssist && <Text style={[styles.tag, { color: theme.ball }]}>ASSIST</Text>}
       </Pressable>
     );
@@ -107,6 +115,22 @@ export function GoalSheet({ visible, onClose, color }: Props) {
       <View style={styles.card}>
         <Text style={styles.title}>Who scored?</Text>
         <Text style={styles.sub}>Tap the scorer · double-tap the assist</Text>
+
+        {isHoops && (
+          <View style={styles.pointsRow}>
+            {[1, 2, 3].map((n) => (
+              <Pressable
+                key={n}
+                style={[styles.pointBtn, points === n && styles.pointBtnOn]}
+                onPress={() => setPoints(n)}
+              >
+                <Text style={[styles.pointText, points === n && styles.pointTextOn]}>
+                  {n === 1 ? 'FT' : `${n} PT`}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         {players.length === 0 ? (
           <Text style={styles.empty}>No players on the field.</Text>
@@ -125,7 +149,9 @@ export function GoalSheet({ visible, onClose, color }: Props) {
             onPress={submit}
             disabled={!scorer}
           >
-            <Text style={styles.primaryText}>Add goal</Text>
+            <Text style={styles.primaryText}>
+              {isHoops ? 'Add basket' : 'Add goal'}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -148,6 +174,19 @@ const styles = StyleSheet.create({
   },
   title: { color: theme.text, fontSize: 20, fontWeight: '800' },
   sub: { color: theme.textDim, fontSize: 13, marginTop: 2, marginBottom: 14 },
+  pointsRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  pointBtn: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: radius.md,
+    backgroundColor: theme.control,
+    borderWidth: 1,
+    borderColor: theme.controlBorder,
+    alignItems: 'center',
+  },
+  pointBtnOn: { backgroundColor: theme.live, borderColor: theme.live },
+  pointText: { color: theme.text, fontWeight: '800', fontSize: 15 },
+  pointTextOn: { color: theme.onAccent },
   empty: { color: theme.textDim, fontSize: 15, paddingVertical: 24, textAlign: 'center' },
   scroll: { maxHeight: 400 },
   row: {

@@ -33,18 +33,32 @@ export function GameSheet({ visible, onClose, teamName, color }: Props) {
 
   if (!match) return null;
 
+  const isHoops = match.sport === 'basketball';
+  const scoreIcon = isHoops ? '🏀' : '⚽';
+  const ptLabel = (n: number) => (n === 1 ? 'FT' : `${n} PT`);
+
   const name = (id: string | null) => {
     if (!id) return null;
     return match.roster.find((r) => r.id === id)?.name ?? 'Unknown';
   };
 
-  // Our events, one line each: goals (with assist) then bookings.
+  // A basket's supporting line: its point value (hoops) and/or the assist.
+  const scoreMeta = (g: (typeof match.goals)[number]) => {
+    const assist = name(g.assistId);
+    const parts = [
+      isHoops ? ptLabel(g.points ?? 1) : null,
+      assist ? `assist · ${assist}` : null,
+    ].filter(Boolean);
+    return parts.length ? parts.join(' · ') : null;
+  };
+
+  // Our events, one line each: scores (with points/assist) then bookings.
   const usLines = [
     ...match.goals.map((g) => ({
       key: g.id,
-      icon: '⚽',
-      text: name(g.scorerId) ?? 'Goal',
-      meta: name(g.assistId) ? `assist · ${name(g.assistId)}` : null,
+      icon: scoreIcon,
+      text: name(g.scorerId) ?? (isHoops ? 'Basket' : 'Goal'),
+      meta: scoreMeta(g),
     })),
     ...match.roster
       .filter((p) => match.cards[p.id])
@@ -56,12 +70,17 @@ export function GameSheet({ visible, onClose, teamName, color }: Props) {
       })),
   ];
 
-  // Them goals are unattributed, so just a marker per goal.
-  const themLines = Array.from({ length: match.score.them }, (_, i) => ({
-    key: `them-${i}`,
-    icon: '⚽',
-    text: 'Goal',
-  }));
+  // Them scores aren't attributed. Soccer lists a marker per goal; basketball
+  // scores in 2s/3s, so a per-point list would be nonsense — show a total.
+  const themLines = isHoops
+    ? match.score.them > 0
+      ? [{ key: 'them', icon: scoreIcon, text: `${match.score.them} points` }]
+      : []
+    : Array.from({ length: match.score.them }, (_, i) => ({
+        key: `them-${i}`,
+        icon: scoreIcon,
+        text: 'Goal',
+      }));
 
   const confirmReset = () => {
     Alert.alert(

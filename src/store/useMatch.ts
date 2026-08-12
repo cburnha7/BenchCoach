@@ -91,7 +91,11 @@ type MatchStore = {
   clearCard: (id: string) => void;
 
   bumpScore: (team: 'us' | 'them', delta: number) => void;
-  recordGoal: (scorerId: string | null, assistId: string | null) => void;
+  recordGoal: (
+    scorerId: string | null,
+    assistId: string | null,
+    points?: number
+  ) => void;
   removeGoal: (goalId: string) => void;
   resetScore: () => void;
   resetStats: () => void;
@@ -409,21 +413,21 @@ export const useMatch = create<MatchStore>((set, get) => {
       }));
     },
 
-    recordGoal: (scorerId, assistId) => {
+    recordGoal: (scorerId, assistId, points = 1) => {
       patch((m) => {
         const stats = { ...m.stats };
         if (scorerId) {
-          const s = stats[scorerId] ?? { g: 0, a: 0 };
-          stats[scorerId] = { g: s.g + 1, a: s.a };
+          const s = stats[scorerId] ?? { g: 0, a: 0, pts: 0 };
+          stats[scorerId] = { g: s.g + 1, a: s.a, pts: (s.pts ?? 0) + points };
         }
         if (assistId && assistId !== scorerId) {
-          const a = stats[assistId] ?? { g: 0, a: 0 };
-          stats[assistId] = { g: a.g, a: a.a + 1 };
+          const a = stats[assistId] ?? { g: 0, a: 0, pts: 0 };
+          stats[assistId] = { g: a.g, a: a.a + 1, pts: a.pts ?? 0 };
         }
-        const goal = { id: makeId('goal'), scorerId, assistId };
+        const goal = { id: makeId('goal'), scorerId, assistId, points };
         return {
           ...m,
-          score: { ...m.score, us: m.score.us + 1 },
+          score: { ...m.score, us: m.score.us + points },
           goals: [...m.goals, goal],
           stats,
         };
@@ -434,18 +438,23 @@ export const useMatch = create<MatchStore>((set, get) => {
       patch((m) => {
         const goal = m.goals.find((g) => g.id === goalId);
         if (!goal) return m;
+        const points = goal.points ?? 1;
         const stats = { ...m.stats };
         if (goal.scorerId && stats[goal.scorerId]) {
           const s = stats[goal.scorerId];
-          stats[goal.scorerId] = { g: Math.max(0, s.g - 1), a: s.a };
+          stats[goal.scorerId] = {
+            g: Math.max(0, s.g - 1),
+            a: s.a,
+            pts: Math.max(0, (s.pts ?? 0) - points),
+          };
         }
         if (goal.assistId && goal.assistId !== goal.scorerId && stats[goal.assistId]) {
           const a = stats[goal.assistId];
-          stats[goal.assistId] = { g: a.g, a: Math.max(0, a.a - 1) };
+          stats[goal.assistId] = { g: a.g, a: Math.max(0, a.a - 1), pts: a.pts ?? 0 };
         }
         return {
           ...m,
-          score: { ...m.score, us: Math.max(0, m.score.us - 1) },
+          score: { ...m.score, us: Math.max(0, m.score.us - points) },
           goals: m.goals.filter((g) => g.id !== goalId),
           stats,
         };

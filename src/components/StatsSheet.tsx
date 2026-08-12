@@ -31,17 +31,31 @@ export function StatsSheet({ visible, onClose, color }: Props) {
 
   if (!match) return null;
 
+  const isHoops = match.sport === 'basketball';
+  // Basketball ranks on points; soccer on goals. `primary` is whichever the
+  // first stat column shows.
   const rows = match.roster
-    .map((p) => ({ p, ...(match.stats[p.id] ?? { g: 0, a: 0 }) }))
-    .sort((x, y) => y.g - x.g || y.a - x.a || x.p.name.localeCompare(y.p.name));
+    .map((p) => {
+      const st = match.stats[p.id];
+      const g = st?.g ?? 0;
+      const a = st?.a ?? 0;
+      const pts = st?.pts ?? 0;
+      return { p, g, a, pts, primary: isHoops ? pts : g };
+    })
+    .sort(
+      (x, y) =>
+        y.primary - x.primary || y.a - x.a || x.p.name.localeCompare(y.p.name)
+    );
 
-  const totalG = rows.reduce((n, r) => n + r.g, 0);
+  const totalPrimary = rows.reduce((n, r) => n + r.primary, 0);
   const totalA = rows.reduce((n, r) => n + r.a, 0);
+  const primaryLabel = isHoops ? 'PTS' : 'G';
+  const primaryWord = isHoops ? 'point' : 'goal';
 
   const confirmReset = () => {
     Alert.alert(
       'Reset season stats?',
-      'Clears every player’s goals and assists. This cannot be undone.',
+      `Clears every player’s ${primaryWord}s and assists. This cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Reset', style: 'destructive', onPress: () => resetStats() },
@@ -56,7 +70,8 @@ export function StatsSheet({ visible, onClose, color }: Props) {
           <View style={styles.headerMain}>
             <Text style={styles.title}>Season stats</Text>
             <Text style={styles.sub}>
-              {totalG} goal{totalG === 1 ? '' : 's'} · {totalA} assist
+              {totalPrimary} {primaryWord}
+              {totalPrimary === 1 ? '' : 's'} · {totalA} assist
               {totalA === 1 ? '' : 's'}
             </Text>
           </View>
@@ -67,12 +82,12 @@ export function StatsSheet({ visible, onClose, color }: Props) {
 
         <View style={styles.colHead}>
           <Text style={[styles.colName, styles.colLabel]}>Player</Text>
-          <Text style={[styles.colStat, styles.colLabel]}>G</Text>
+          <Text style={[styles.colStat, styles.colLabel]}>{primaryLabel}</Text>
           <Text style={[styles.colStat, styles.colLabel]}>A</Text>
         </View>
 
         <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
-          {rows.map(({ p, g, a }) => (
+          {rows.map(({ p, a, primary }) => (
             <View key={p.id} style={styles.row}>
               <View style={[styles.badge, { backgroundColor: color }]}>
                 <Text style={styles.badgeText}>{badgeLabel(p)}</Text>
@@ -80,8 +95,8 @@ export function StatsSheet({ visible, onClose, color }: Props) {
               <Text style={styles.name} numberOfLines={1}>
                 {p.name}
               </Text>
-              <Text style={[styles.colStat, styles.stat, g === 0 && styles.dim]}>
-                {g}
+              <Text style={[styles.colStat, styles.stat, primary === 0 && styles.dim]}>
+                {primary}
               </Text>
               <Text style={[styles.colStat, styles.stat, a === 0 && styles.dim]}>
                 {a}

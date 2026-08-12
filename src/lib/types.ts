@@ -86,8 +86,11 @@ export type FreeDraw = {
  * Everything about one team's current match.
  * `minutes` accumulates seconds per player while the clock runs.
  */
-/** Per-player season tally. `g` goals, `a` assists. */
-export type PlayerStat = { g: number; a: number };
+/**
+ * Per-player season tally. `g` scores made (soccer goals / basketball baskets),
+ * `a` assists, `pts` points (soccer: 1 per goal; basketball: 1/2/3 per basket).
+ */
+export type PlayerStat = { g: number; a: number; pts: number };
 
 /** A booking. `red` means sent off — benched for good, unavailable to sub on. */
 export type Card = 'yellow' | 'red';
@@ -101,6 +104,8 @@ export type GoalEvent = {
   id: string;
   scorerId: string | null;
   assistId: string | null;
+  /** Points this score was worth. Soccer is always 1; basketball 1/2/3. */
+  points: number;
 };
 
 export type MatchState = {

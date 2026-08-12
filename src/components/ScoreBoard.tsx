@@ -9,6 +9,8 @@ type Props = {
   onAddUs: () => void;
   /** Us minus — opens the list of this game's goals to remove one. */
   onRemoveUs: () => void;
+  /** Them plus for basketball — opens the points chooser (1/2/3). */
+  onAddThem: () => void;
   /** Tapping the board (anywhere but the ± buttons) opens the game overview. */
   onOpenOverview: () => void;
   /**
@@ -28,6 +30,7 @@ export function ScoreBoard({
   color,
   onAddUs,
   onRemoveUs,
+  onAddThem,
   onOpenOverview,
   inline = false,
 }: Props) {
@@ -35,6 +38,10 @@ export function ScoreBoard({
   const bumpScore = useMatch((s) => s.bumpScore);
 
   if (!match) return null;
+
+  // Basketball scores in 2s and 3s, so Them's "+" opens a chooser; soccer adds
+  // a single goal directly.
+  const isHoops = match.sport === 'basketball';
 
   const Stepper = ({
     label,
@@ -85,7 +92,7 @@ export function ScoreBoard({
         label="THEM"
         value={match.score.them}
         onMinus={() => bumpScore('them', -1)}
-        onPlus={() => bumpScore('them', 1)}
+        onPlus={isHoops ? onAddThem : () => bumpScore('them', 1)}
       />
       <Pressable
         style={({ pressed }) => [styles.overviewBtn, pressed && styles.pressed]}

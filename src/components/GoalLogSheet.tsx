@@ -28,6 +28,9 @@ export function GoalLogSheet({ visible, onClose, color }: Props) {
 
   if (!match) return null;
 
+  const isHoops = match.sport === 'basketball';
+  const ptLabel = (n: number) => (n === 1 ? 'FT' : `${n} PT`);
+
   const nameOf = (id: string | null) => {
     if (!id) return null;
     const p = match.roster.find((r) => r.id === id);
@@ -41,11 +44,13 @@ export function GoalLogSheet({ visible, onClose, color }: Props) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={styles.card}>
-        <Text style={styles.title}>Remove a goal</Text>
+        <Text style={styles.title}>{isHoops ? 'Remove a basket' : 'Remove a goal'}</Text>
         <Text style={styles.sub}>Us · {match.score.us} this game</Text>
 
         {goals.length === 0 ? (
-          <Text style={styles.empty}>No goals to remove yet.</Text>
+          <Text style={styles.empty}>
+            {isHoops ? 'No baskets to remove yet.' : 'No goals to remove yet.'}
+          </Text>
         ) : (
           <ScrollView style={styles.scroll}>
             {goals.map((g, i) => {
@@ -66,6 +71,9 @@ export function GoalLogSheet({ visible, onClose, color }: Props) {
                       </Text>
                     ) : null}
                   </View>
+                  {isHoops && (
+                    <Text style={styles.pts}>{ptLabel(g.points ?? 1)}</Text>
+                  )}
                   <Pressable
                     style={styles.remove}
                     onPress={() => removeGoal(g.id)}
@@ -121,6 +129,13 @@ const styles = StyleSheet.create({
   },
   numText: { color: theme.onAccent, fontWeight: '800', fontSize: 13 },
   rowMain: { flex: 1 },
+  pts: {
+    color: theme.text,
+    fontSize: 13,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+    marginRight: 8,
+  },
   scorer: { color: theme.text, fontSize: 16, fontWeight: '600' },
   assist: { color: theme.textDim, fontSize: 12.5, marginTop: 2 },
   remove: {
