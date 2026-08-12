@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTeams } from '../store/useTeams';
 import {
@@ -25,6 +26,35 @@ type Props = {
   teamId: string | null;
   onClose: () => void;
 };
+
+/** Where team photos are copied so they survive app relaunches. */
+const PHOTO_DIR = FileSystem.documentDirectory + 'teamPhotos/';
+
+/**
+ * Copy a picked image into the app's document directory and return that path.
+ * The image picker hands back a temporary file iOS purges between launches;
+ * persisting it here is what stops the team card going grey next time.
+ */
+async function persistPhoto(uri: string, teamId: string): Promise<string> {
+  try {
+    await FileSystem.makeDirectoryAsync(PHOTO_DIR, { intermediates: true });
+  } catch {
+    // Directory already exists — fine.
+  }
+  const dest = `${PHOTO_DIR}${teamId}-${Date.now()}.jpg`;
+  await FileSystem.copyAsync({ from: uri, to: dest });
+  return dest;
+}
+
+/** Delete a photo we previously copied (ignore anything else / failures). */
+async function deleteLocalPhoto(uri?: string) {
+  if (!uri || !uri.startsWith(PHOTO_DIR)) return;
+  try {
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+  } catch {
+    // Non-fatal.
+  }
+}
 
 /**
  * Everything that belongs to the team rather than to a player: the photo that
@@ -55,9 +85,17 @@ export function TeamEditSheet({ teamId, onClose }: Props) {
       aspect: [16, 9],
       quality: 0.7,
     });
-    if (!result.canceled && result.assets[0]) {
-      await updateTeam(teamId, { photoUri: result.assets[0].uri });
-    }
+    if (result.canceled || !result.assets[0]) return;
+    const previous = team.photoUri;
+    const saved = await persistPhoto(result.assets[0].uri, teamId);
+    await updateTeam(teamId, { photoUri: saved });
+    void deleteLocalPhoto(previous);
+  };
+
+  const removePhoto = () => {
+    const previous = team.photoUri;
+    void updateTeam(teamId, { photoUri: undefined });
+    void deleteLocalPhoto(previous);
   };
 
   const commit = () => {
@@ -109,10 +147,7 @@ export function TeamEditSheet({ teamId, onClose }: Props) {
           </Pressable>
 
           {team.photoUri && (
-            <Pressable
-              style={styles.removePhoto}
-              onPress={() => void updateTeam(teamId, { photoUri: undefined })}
-            >
+            <Pressable style={styles.removePhoto} onPress={removePhoto}>
               <Text style={styles.removePhotoText}>Remove photo</Text>
             </Pressable>
           )}
