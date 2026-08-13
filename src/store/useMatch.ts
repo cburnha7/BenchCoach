@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { storage, matchKey } from './storage';
 import { BENCH_Y, type TeamSize } from '../lib/formations';
 import { COURT_W, COURT_H, bballDims } from '../lib/basketball';
+import { LAX_COORD_V } from '../lib/lacrosse';
 import {
   ourFormations,
   ourSlots,
@@ -115,6 +116,7 @@ function emptyMatch(teamId: string, size: TeamSize, sport: Sport): MatchState {
     formationIdx: 0,
     courtMode: 'full',
     side: 'offense',
+    coordV: LAX_COORD_V,
     halfLen: 25,
     remaining: 25 * 60,
     opponent: { on: false, formationIdx: 0, pos: null, holder: null },
@@ -303,6 +305,22 @@ export const useMatch = create<MatchStore>((set, get) => {
           }
         }
       }
+
+      // Lacrosse geometry changed to true 600x1100 scale; re-lay older matches
+      // onto the current formation.
+      if (sport === 'lacrosse' && (base.coordV ?? 0) < LAX_COORD_V) {
+        const slots = slotsOf(match);
+        if (slots.length) {
+          match.roster = placeOnSlots(match.roster, slots);
+          if (match.opponent.pos) {
+            match.opponent = {
+              ...match.opponent,
+              pos: oppSlotsOf(match, match.opponent.formationIdx),
+            };
+          }
+        }
+      }
+      match.coordV = LAX_COORD_V;
 
       set({ match, running: false, tickCount: 0 });
     },

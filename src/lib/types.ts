@@ -157,8 +157,10 @@ export type MatchState = {
   formationIdx: number;
   /** Basketball only: whole court (transition), or a single-hoop half court. */
   courtMode: 'full' | 'half';
-  /** Basketball only: show our offense or our defense. */
+  /** Basketball/lacrosse: show our offense or our defense. */
   side: Side;
+  /** Coordinate-space version, so saved matches re-lay when the geometry changes. */
+  coordV: number;
   /** Half length in minutes. */
   halfLen: number;
   /** Seconds left on the current half. */

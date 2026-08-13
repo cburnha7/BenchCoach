@@ -212,7 +212,12 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
     match.side,
     match.opponent.formationIdx
   );
-  const onFieldPlayers = match.roster.filter((p) => p.onField);
+  // A view can show fewer than everyone on the field: a 10v10 lacrosse zone
+  // only shows the six on-side players. The formation's slot count is the cap;
+  // the rest still count for minutes, they're just off this diagram.
+  const onFieldAll = match.roster.filter((p) => p.onField);
+  const onFieldPlayers =
+    slots.length > 0 ? onFieldAll.slice(0, slots.length) : onFieldAll;
   const claimed = new Set<number>();
   onFieldPlayers.forEach((p) => {
     let best = -1;
@@ -233,7 +238,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   // Red cards drop the effective team size: those spots are man-down holes you
   // can't fill. The rest are open spots you can tap to bring a player on.
   const redCount = match.roster.filter((p) => match.cards[p.id] === 'red').length;
-  const fillable = Math.max(0, match.size - redCount - onFieldPlayers.length);
+  const fillable = Math.max(0, slots.length - redCount - onFieldPlayers.length);
 
   // Freehand doodling on empty space — always available, independent of the
   // tracer. Sits under the discs, so a drag that starts on a player still

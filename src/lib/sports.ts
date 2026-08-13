@@ -77,7 +77,8 @@ export function layoutFor(s: Sport, mode: CourtMode) {
     return {
       w,
       h,
-      fit: (mode === 'half' ? 'contain' : 'stretch') as 'contain' | 'stretch',
+      // True proportions, letterboxed and centred (like the basketball court).
+      fit: 'contain' as const,
       surface: (mode === 'half' ? 'lax-half' : 'lacrosse') as 'lax-half' | 'lacrosse',
     };
   }
