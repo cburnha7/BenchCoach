@@ -3,7 +3,13 @@ import { create } from 'zustand';
 import { storage, matchKey } from './storage';
 import { BENCH_Y, type TeamSize } from '../lib/formations';
 import { COURT_W, COURT_H } from '../lib/basketball';
-import { formationsFor, mirrorSlotsFor } from '../lib/sports';
+import {
+  offenseFormations,
+  offenseSlots,
+  defenseFormations,
+  defenseSlots,
+  type CourtMode,
+} from '../lib/sports';
 import {
   clamp,
   makeId,
@@ -17,11 +23,25 @@ import {
   type Sport,
 } from '../lib/types';
 
-/** The slots of the current formation, safe against unknown size/index. */
+/** The slots of the current (offensive) formation, in the active orientation. */
 const slotsOf = (m: MatchState) =>
-  formationsFor(m.sport, m.size)[m.formationIdx]?.slots ?? [];
-/** How many formations this sport offers for this team size. */
-const formCount = (m: MatchState) => formationsFor(m.sport, m.size).length;
+  offenseSlots(m.sport, m.size, m.courtMode, m.formationIdx, m.flipEnds);
+/** How many formations this sport/mode offers for this team size. */
+const formCount = (m: MatchState) =>
+  offenseFormations(m.sport, m.size, m.courtMode).length;
+/** Opponent (defensive) slots for the active orientation. */
+const oppSlotsOf = (m: MatchState, idx: number) =>
+  defenseSlots(m.sport, m.size, m.courtMode, idx, m.flipEnds);
+/** Put on-field players onto `slots` in order, re-homing them there. */
+const placeOnSlots = (roster: Player[], slots: { x: number; y: number }[]) => {
+  let i = 0;
+  return roster.map((p) => {
+    if (!p.onField) return p;
+    const s = slots[i];
+    i += 1;
+    return s ? { ...p, x: s.x, y: s.y, homeX: s.x, homeY: s.y } : p;
+  });
+};
 
 const TICK_MS = 250;
 const SAVE_EVERY_S = 5;
@@ -41,6 +61,8 @@ function emptyMatch(teamId: string, size: TeamSize, sport: Sport): MatchState {
     scratched: [],
     queue: [],
     formationIdx: 0,
+    courtMode: 'full',
+    flipEnds: false,
     halfLen: 25,
     remaining: 25 * 60,
     opponent: { on: false, formationIdx: 0, pos: null, holder: null },
@@ -107,6 +129,8 @@ type MatchStore = {
   setFormation: (idx: number) => void;
   applyFormation: () => void;
   resetPositions: () => void;
+  setCourtMode: (mode: CourtMode) => void;
+  toggleFlipEnds: () => void;
 
   swap: (outId: string, inId: string) => void;
   swapPositions: (aId: string, bId: string) => void;
@@ -180,7 +204,7 @@ export const useMatch = create<MatchStore>((set, get) => {
         formationIdx: clamp(
           base.formationIdx ?? 0,
           0,
-          Math.max(0, formationsFor(sport, size).length - 1)
+          Math.max(0, offenseFormations(sport, size, base.courtMode ?? 'full').length - 1)
         ),
         // The tactics board starts clean each session.
         arrows: [],
@@ -206,23 +230,16 @@ export const useMatch = create<MatchStore>((set, get) => {
       // players off the new floor — snap them onto the current formation and
       // re-mirror the opponents so nothing loads off-court.
       if (sport === 'basketball') {
-        const slots = formationsFor(sport, size)[match.formationIdx]?.slots ?? [];
+        const slots = slotsOf(match);
         const stale = match.roster.some(
           (p) => p.onField && (p.x > COURT_W || p.y > COURT_H)
         );
         if (stale && slots.length) {
-          let i = 0;
-          match.roster = match.roster.map((p) => {
-            if (!p.onField) return p;
-            const slot = slots[i++];
-            return slot
-              ? { ...p, x: slot.x, y: slot.y, homeX: slot.x, homeY: slot.y }
-              : p;
-          });
+          match.roster = placeOnSlots(match.roster, slots);
           if (match.opponent.pos) {
             match.opponent = {
               ...match.opponent,
-              pos: mirrorSlotsFor(sport, size, match.opponent.formationIdx),
+              pos: oppSlotsOf(match, match.opponent.formationIdx),
             };
           }
         }
@@ -579,6 +596,58 @@ export const useMatch = create<MatchStore>((set, get) => {
       });
     },
 
+    /**
+     * Switch between full and half court (basketball). The coordinate space
+     * changes, so on-field players are re-laid onto the mode's formation and
+     * the opponents re-derived; the board is wiped.
+     */
+    setCourtMode: (mode) => {
+      patch((m) => {
+        if (mode === m.courtMode) return m;
+        const next = { ...m, courtMode: mode };
+        const formationIdx = clamp(m.formationIdx, 0, Math.max(0, formCount(next) - 1));
+        next.formationIdx = formationIdx;
+        const oppCount = defenseFormations(m.sport, m.size, mode).length;
+        const oppIdx = clamp(m.opponent.formationIdx, 0, Math.max(0, oppCount - 1));
+        return {
+          ...next,
+          roster: benchLayout(placeOnSlots(m.roster, slotsOf(next))),
+          opponent: {
+            ...m.opponent,
+            formationIdx: oppIdx,
+            pos: m.opponent.pos ? oppSlotsOf(next, oppIdx) : m.opponent.pos,
+            holder: null,
+          },
+          arrows: [],
+          ghosts: [],
+          drawings: [],
+          shots: [],
+          holder: null,
+        };
+      });
+    },
+
+    /** Flip which end we attack (full: top/bottom; half: hoop left/right). */
+    toggleFlipEnds: () => {
+      patch((m) => {
+        const next = { ...m, flipEnds: !m.flipEnds };
+        return {
+          ...next,
+          roster: placeOnSlots(m.roster, slotsOf(next)),
+          opponent: {
+            ...m.opponent,
+            pos: m.opponent.pos ? oppSlotsOf(next, m.opponent.formationIdx) : m.opponent.pos,
+            holder: null,
+          },
+          arrows: [],
+          ghosts: [],
+          drawings: [],
+          shots: [],
+          holder: null,
+        };
+      });
+    },
+
     swap: (outId, inId) => {
       patch((m) => {
         const out = m.roster.find((p) => p.id === outId);
@@ -843,7 +912,7 @@ export const useMatch = create<MatchStore>((set, get) => {
         const on = !m.opponent.on;
         const pos =
           on && (!m.opponent.pos || m.opponent.pos.length !== m.size)
-            ? mirrorSlotsFor(m.sport, m.size, m.opponent.formationIdx)
+            ? oppSlotsOf(m, m.opponent.formationIdx)
             : m.opponent.pos;
         return { ...m, opponent: { ...m.opponent, on, pos, holder: null } };
       });
@@ -851,13 +920,14 @@ export const useMatch = create<MatchStore>((set, get) => {
 
     setOpponentFormation: (idx) => {
       patch((m) => {
-        const formationIdx = clamp(idx, 0, Math.max(0, formCount(m) - 1));
+        const count = defenseFormations(m.sport, m.size, m.courtMode).length;
+        const formationIdx = clamp(idx, 0, Math.max(0, count - 1));
         return {
           ...m,
           opponent: {
             ...m.opponent,
             formationIdx,
-            pos: mirrorSlotsFor(m.sport, m.size, formationIdx),
+            pos: oppSlotsOf(m, formationIdx),
             holder: null,
           },
         };
@@ -890,7 +960,7 @@ export const useMatch = create<MatchStore>((set, get) => {
         ...m,
         opponent: {
           ...m.opponent,
-          pos: mirrorSlotsFor(m.sport, m.size, m.opponent.formationIdx),
+          pos: oppSlotsOf(m, m.opponent.formationIdx),
         },
       }));
     },

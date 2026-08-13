@@ -126,6 +126,10 @@ export type MatchState = {
   scratched: string[];
   queue: QueuedSub[];
   formationIdx: number;
+  /** Basketball only: whole court, or a single-hoop half court (rotated). */
+  courtMode: 'full' | 'half';
+  /** Basketball only: flip the end we attack (full: top/bottom; half: hoop L/R). */
+  flipEnds: boolean;
   /** Half length in minutes. */
   halfLen: number;
   /** Seconds left on the current half. */

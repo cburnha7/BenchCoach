@@ -22,6 +22,7 @@ import { RosterSheet } from '../../src/components/RosterSheet';
 import { SubSheet } from '../../src/components/SubSheet';
 import { useTeams } from '../../src/store/useTeams';
 import { useMatch, onFieldCount } from '../../src/store/useMatch';
+import { offenseFormations } from '../../src/lib/sports';
 import { DEFAULT_COLOR } from '../../src/lib/types';
 import { theme, radius, CONTROL_H } from '../../src/lib/theme';
 
@@ -52,6 +53,8 @@ export default function TeamScreen() {
   const resetPositions = useMatch((s) => s.resetPositions);
   const clearBoard = useMatch((s) => s.clearBoard);
   const resetOpponent = useMatch((s) => s.resetOpponent);
+  const setCourtMode = useMatch((s) => s.setCourtMode);
+  const toggleFlipEnds = useMatch((s) => s.toggleFlipEnds);
 
   // Reset the board: every player back to their home spot (where they were
   // before any dragging), the opponent shape back to its mirror, and the
@@ -155,13 +158,41 @@ export default function TeamScreen() {
   const formationPicker = (fill: boolean) =>
     ready ? (
       <FormationPicker
-        sport={team.sport}
-        size={team.size}
+        formations={offenseFormations(team.sport, team.size, match.courtMode)}
         index={match.formationIdx}
         onSelect={setFormation}
         inline={!fill}
         fill={fill}
       />
+    ) : null;
+
+  // Basketball-only: full/half court and flip-ends, on the bottom bar.
+  const courtControls =
+    team.sport === 'basketball' && ready ? (
+      <View style={styles.courtRow}>
+        <View style={styles.segment}>
+          {(['full', 'half'] as const).map((mode) => {
+            const on = match.courtMode === mode;
+            return (
+              <Pressable
+                key={mode}
+                style={[styles.segBtn, on && styles.segOn]}
+                onPress={() => setCourtMode(mode)}
+              >
+                <Text style={[styles.segText, on && styles.segTextOn]}>
+                  {mode === 'full' ? 'Full' : 'Half'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Pressable
+          style={({ pressed }) => [styles.btn, styles.flipBtn, pressed && styles.pressed]}
+          onPress={toggleFlipEnds}
+        >
+          <Text style={styles.btnText}>Flip ends</Text>
+        </Pressable>
+      </View>
     ) : null;
 
   return (
@@ -218,6 +249,8 @@ export default function TeamScreen() {
         onPlayerAction={setActionFor}
         onEmptySlot={(x, y) => setBringOnSlot({ x, y })}
       />
+
+      {courtControls}
 
       {wide ? (
         /* Tablet bottom row: the things that sit at the bottom on phone —
@@ -318,6 +351,33 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   pressed: { opacity: 0.82 },
+  /** Basketball court-mode strip below the field. */
+  courtRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+  },
+  segment: {
+    flexDirection: 'row',
+    height: CONTROL_H,
+    borderRadius: radius.md,
+    backgroundColor: theme.control,
+    borderWidth: 1,
+    borderColor: theme.controlBorder,
+    overflow: 'hidden',
+  },
+  segBtn: {
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segOn: { backgroundColor: theme.text },
+  segText: { color: theme.text, fontWeight: '800', fontSize: 15 },
+  segTextOn: { color: theme.bg },
+  flipBtn: {},
   gear: {
     width: 54,
     height: CONTROL_H,

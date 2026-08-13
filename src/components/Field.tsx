@@ -17,7 +17,14 @@ import { Pitch } from './Pitch';
 import { PlayerDisc, DISC_R } from './PlayerDisc';
 import { OpponentMarker } from './OpponentMarker';
 import { TacticsLayer } from './TacticsLayer';
-import { formationsFor, labelsFor, sportConfig } from '../lib/sports';
+import {
+  layoutFor,
+  offenseSlots,
+  offenseLabels,
+  defenseLabels,
+  hoopsFor,
+  sportConfig,
+} from '../lib/sports';
 import { useMatch } from '../store/useMatch';
 import { firstName } from '../lib/types';
 import { radius, rgba } from '../lib/theme';
@@ -143,16 +150,16 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
 
   if (!match) return <View style={styles.fill} onLayout={onLayout} />;
 
-  const cfg = sportConfig(match.sport);
-  const FW = cfg.fieldW;
-  const FH = cfg.fieldH;
+  const layout = layoutFor(match.sport, match.courtMode);
+  const FW = layout.w;
+  const FH = layout.h;
 
   // Soccer stretches to fill the screen (distortion capped at MAX_STRETCH);
   // basketball scales uniformly to true court proportions and letterboxes.
   let scaleX = box.width / FW;
   let scaleY = box.height / FH;
   if (scaleX > 0 && scaleY > 0) {
-    if (cfg.fit === 'contain') {
+    if (layout.fit === 'contain') {
       const s = Math.min(scaleX, scaleY);
       scaleX = s;
       scaleY = s;
@@ -180,14 +187,19 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   // Empty starter slots: claim the nearest formation slot for each on-field
   // player, then mark whatever is left as an open spot. Robust to dragging —
   // a moved player still holds the slot closest to where they ended up.
-  const slots =
-    formationsFor(match.sport, match.size)[match.formationIdx]?.slots ?? [];
-  const labels = labelsFor(match.sport, match.size, match.formationIdx);
-  const oppLabels = labelsFor(
+  const slots = offenseSlots(
     match.sport,
     match.size,
-    match.opponent.formationIdx,
-    true
+    match.courtMode,
+    match.formationIdx,
+    match.flipEnds
+  );
+  const labels = offenseLabels(match.sport, match.size, match.courtMode, match.formationIdx);
+  const oppLabels = defenseLabels(
+    match.sport,
+    match.size,
+    match.courtMode,
+    match.opponent.formationIdx
   );
   const onFieldPlayers = match.roster.filter((p) => p.onField);
   const claimed = new Set<number>();
@@ -240,15 +252,10 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
       runOnJS(addDrawing)(pairs);
     });
 
-  // Double-tap a goal/hoop to drop a shot marker there. Targets and tap bands
-  // depend on the surface (goals for soccer, rims for basketball).
-  const isCourt = cfg.surface === 'court';
-  const centerX = FW / 2;
-  const topGoalY = isCourt ? 58 : 30;
-  const botGoalY = isCourt ? FH - 58 : 742;
-  const goalHalfW = isCourt ? 90 : 80;
-  const topBandY = isCourt ? 130 : 58;
-  const botBandY = isCourt ? FH - 130 : 716;
+  // Double-tap near a goal/rim to drop a shot marker there. Works for any
+  // layout — soccer goals, both full-court rims, or the single half-court rim.
+  const hoops = hoopsFor(match.sport, match.courtMode, match.flipEnds);
+  const SHOT_R = 130;
   const goalTap = Gesture.Tap()
     .numberOfTaps(2)
     .maxDelay(220)
@@ -256,14 +263,13 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
       if (!success) return;
       const fx = e.x / scaleX;
       const fy = e.y / scaleY;
-      if (fx > centerX - goalHalfW && fx < centerX + goalHalfW && fy < topBandY) {
-        runOnJS(registerShot)(centerX, topGoalY);
-      } else if (
-        fx > centerX - goalHalfW &&
-        fx < centerX + goalHalfW &&
-        fy > botBandY
-      ) {
-        runOnJS(registerShot)(centerX, botGoalY);
+      for (let i = 0; i < hoops.length; i++) {
+        const dx = fx - hoops[i].x;
+        const dy = fy - hoops[i].y;
+        if (dx * dx + dy * dy < SHOT_R * SHOT_R) {
+          runOnJS(registerShot)(hoops[i].x, hoops[i].y);
+          return;
+        }
       }
     });
 
@@ -277,7 +283,8 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
             <Pitch
               width={stageW}
               height={stageH}
-              surface={sportConfig(match.sport).surface}
+              surface={layout.surface}
+              flip={match.flipEnds}
             />
           </View>
           <View pointerEvents="none" style={styles.rim} />

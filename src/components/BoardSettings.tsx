@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { FormationPicker } from './FormationPicker';
 import { useMatch } from '../store/useMatch';
+import { defenseFormations } from '../lib/sports';
 import { theme, radius } from '../lib/theme';
 
 type Props = {
@@ -57,8 +58,7 @@ export function BoardSettings({
         {match.opponent.on && (
           <View style={styles.oppFormation}>
             <FormationPicker
-              sport={match.sport}
-              size={match.size}
+              formations={defenseFormations(match.sport, match.size, match.courtMode)}
               index={match.opponent.formationIdx}
               onSelect={setOpponentFormation}
               title="Opponent formation"

@@ -9,7 +9,7 @@ import {
 } from '@shopify/react-native-skia';
 import { theme } from '../lib/theme';
 import { FIELD_W, FIELD_H } from '../lib/formations';
-import { COURT_W, COURT_H } from '../lib/basketball';
+import { COURT_W, COURT_H, HALF_W, HALF_H } from '../lib/basketball';
 
 const STRIPES = 8;
 const PITCH_TOP = 8;
@@ -39,12 +39,22 @@ const arc3Top = Skia.Path.MakeFromSVGString(
   'M35,5 L35,159 A237.5,237.5 0 0 0 465,159 L465,5'
 )!;
 
+// Half court, drawn canonically with the hoop on the RIGHT (baseline right,
+// half-court line left). `flip` mirrors the whole group for hoop-on-left.
+const HALF_MID = HALF_H / 2; // 250
+const arc3Half = Skia.Path.MakeFromSVGString(
+  'M465,35 L311,35 A237.5,237.5 0 0 0 311,465 L465,465'
+)!;
+const halfCircleHalf = Skia.Path.MakeFromSVGString('M5,190 A60,60 0 0 1 5,310')!;
+
 type Props = {
   /** Rendered size in points. The sport's field space is scaled to fit. */
   width: number;
   height: number;
   /** Which surface to draw. Defaults to the soccer field. */
-  surface?: 'field' | 'court';
+  surface?: 'field' | 'court-full' | 'court-half';
+  /** Half court only: mirror so the hoop sits on the left. */
+  flip?: boolean;
 };
 
 /**
@@ -52,17 +62,49 @@ type Props = {
  * re-renders during play. Players are separate native views layered on top,
  * which lets each disc animate independently on the UI thread.
  */
-function PitchBase({ width, height, surface = 'field' }: Props) {
-  // Scale the sport's own coordinate space to the rendered box. The court and
-  // the pitch have different proportions, so the divisor depends on surface.
-  const fw = surface === 'court' ? COURT_W : FIELD_W;
-  const fh = surface === 'court' ? COURT_H : FIELD_H;
+function PitchBase({ width, height, surface = 'field', flip = false }: Props) {
+  // Scale the sport's own coordinate space to the rendered box. Each surface
+  // has its own proportions, so the divisor depends on surface.
+  const fw = surface === 'court-half' ? HALF_W : surface === 'court-full' ? COURT_W : FIELD_W;
+  const fh = surface === 'court-half' ? HALF_H : surface === 'court-full' ? COURT_H : FIELD_H;
   const scaleX = width / fw;
   const scaleY = height / fh;
 
   return (
     <Canvas style={{ width, height }} pointerEvents="none">
-      {surface === 'court' ? (
+      {surface === 'court-half' ? (
+        <Group transform={[{ scaleX }, { scaleY }]}>
+          {/* Mirror the whole half court for hoop-on-left. */}
+          <Group transform={flip ? [{ translateX: HALF_W }, { scaleX: -1 }] : []}>
+            {/* Hardwood planks */}
+            {Array.from({ length: STRIPES }).map((_, i) => (
+              <Rect
+                key={i}
+                x={5 + i * ((HALF_W - 10) / STRIPES)}
+                y={5}
+                width={(HALF_W - 10) / STRIPES}
+                height={HALF_H - 10}
+                color={i % 2 ? theme.courtAlt : theme.court}
+              />
+            ))}
+
+            {/* Boundary */}
+            <Rect x={5} y={5} width={HALF_W - 10} height={HALF_H - 10} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+
+            {/* Half-court line (left) + jump-circle half */}
+            <Rect x={5 - CHALK_W / 2} y={5} width={CHALK_W} height={HALF_H - 10} color={theme.courtLine} />
+            <Path path={halfCircleHalf} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+
+            {/* Paint, free-throw circle, 3-pt line, rim (hoop right) */}
+            <Rect x={275} y={170} width={190} height={160} color={theme.courtPaint} />
+            <Rect x={275} y={170} width={190} height={160} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+            <Circle cx={275} cy={HALF_MID} r={60} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+            <Path path={arc3Half} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+            <Rect x={423} y={220} width={4} height={60} color={theme.courtLine} />
+            <Circle cx={412} cy={HALF_MID} r={8} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+          </Group>
+        </Group>
+      ) : surface === 'court-full' ? (
         <Group transform={[{ scaleX }, { scaleY }]}>
           {/* Hardwood planks run the length of the court. */}
           {Array.from({ length: STRIPES }).map((_, i) => (
