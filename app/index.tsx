@@ -16,7 +16,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { DraggableTeamList } from '../src/components/DraggableTeamList';
 import { TeamEditSheet } from '../src/components/TeamEditSheet';
 import { SportToggle } from '../src/components/SportToggle';
+import { WelcomeSheet } from '../src/components/WelcomeSheet';
 import { useTeams } from '../src/store/useTeams';
+import { storage } from '../src/store/storage';
 import {
   DEFAULT_COLOR,
   TEAM_COLORS,
@@ -29,6 +31,7 @@ import { theme, radius, mix } from '../src/lib/theme';
 
 const MAX_TEAMS = 5;
 const GAP = 14;
+const GUIDE_SEEN_KEY = 'bc_guide_seen_v1';
 
 export default function Home() {
   const router = useRouter();
@@ -51,10 +54,28 @@ export default function Home() {
   const [color, setColor] = useState<string>(DEFAULT_COLOR);
   // Measured height of the list area, so cards can fill it.
   const [listH, setListH] = useState(0);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  // Open the walkthrough automatically the first time the app is opened.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const seen = await storage.read<boolean>(GUIDE_SEEN_KEY);
+      if (active && !seen) setGuideOpen(true);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const closeGuide = () => {
+    setGuideOpen(false);
+    void storage.write(GUIDE_SEEN_KEY, true);
+  };
 
   // Keep the size selector valid for the active sport (e.g. 5v5 for hoops).
   useEffect(() => {
@@ -161,6 +182,15 @@ export default function Home() {
           headerShadowVisible: false,
           headerStyle: { backgroundColor: '#ffffff' },
           headerTintColor: '#0e1320',
+          headerLeft: () => (
+            <Pressable
+              onPress={() => setGuideOpen(true)}
+              hitSlop={10}
+              style={({ pressed }) => [styles.helpBtn, pressed && styles.editPressed]}
+            >
+              <Text style={styles.helpText}>?</Text>
+            </Pressable>
+          ),
           headerRight: () => (
             <Pressable
               onPress={() => setEditing((e) => !e)}
@@ -275,6 +305,7 @@ export default function Home() {
       </Modal>
 
       <TeamEditSheet teamId={editId} onClose={() => setEditId(null)} />
+      <WelcomeSheet visible={guideOpen} onClose={closeGuide} />
     </View>
   );
 }
@@ -292,6 +323,17 @@ const styles = StyleSheet.create({
   editPressed: { opacity: 0.6 },
   editBtnText: { color: '#0e1320', fontSize: 16, fontWeight: '600' },
   editBtnTextOn: { color: '#ffffff', fontWeight: '700' },
+  // Header "?" guide button, dark on the white home header.
+  helpBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: '#0e1320',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helpText: { color: '#0e1320', fontSize: 15, fontWeight: '800' },
   card: {
     borderRadius: 22,
     overflow: 'hidden',
