@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -62,11 +63,9 @@ export function TeamEditSheet({ teamId, onClose }: Props) {
   const deleteTeam = useTeams((s) => s.deleteTeam);
 
   const [name, setName] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     setName(team?.name ?? '');
-    setConfirmDelete(false);
   }, [teamId, team?.name]);
 
   if (!teamId || !team) return null;
@@ -195,19 +194,26 @@ export function TeamEditSheet({ teamId, onClose }: Props) {
           </View>
 
           <Pressable
-            style={[styles.delete, confirmDelete && styles.deleteArmed]}
-            onPress={() => {
-              if (!confirmDelete) {
-                setConfirmDelete(true);
-                return;
-              }
-              void deleteTeam(teamId);
-              onClose();
-            }}
+            style={styles.delete}
+            onPress={() =>
+              Alert.alert(
+                'Delete team?',
+                `“${team.name}” and its saved match will be removed. This can’t be undone.`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => {
+                      void deleteTeam(teamId);
+                      onClose();
+                    },
+                  },
+                ]
+              )
+            }
           >
-            <Text style={styles.deleteText}>
-              {confirmDelete ? 'Tap again to delete this team' : 'Delete team'}
-            </Text>
+            <Text style={styles.deleteText}>Delete team</Text>
           </Pressable>
         </ScrollView>
 
@@ -308,7 +314,6 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
     alignItems: 'center',
   },
-  deleteArmed: { backgroundColor: theme.danger, borderColor: theme.danger },
   deleteText: { color: theme.danger, fontWeight: '700', fontSize: 15 },
   done: {
     position: 'absolute',
