@@ -6,6 +6,8 @@ import {
   FORMATIONS as SOCCER_FORMATIONS,
   positionLabels as soccerLabels,
   mirrorSlots as soccerMirror,
+  FIELD_W,
+  FIELD_H,
   type Formation,
   type Slot,
 } from './formations';
@@ -13,6 +15,8 @@ import {
   BASKETBALL_FORMATIONS,
   basketballLabels,
   basketballMirror,
+  COURT_W,
+  COURT_H,
 } from './basketball';
 import type { Sport } from './types';
 
@@ -27,6 +31,15 @@ export type SportConfig = {
   surface: 'field' | 'court';
   /** The emoji dropped at the end of a shot line. */
   ballEmoji: string;
+  /** The sport's own coordinate space, that positions are stored in. */
+  fieldW: number;
+  fieldH: number;
+  /**
+   * How the surface fills the screen. `stretch` fills both axes independently
+   * (the soccer pitch, distortion capped in Field.tsx); `contain` scales
+   * uniformly to true proportions and centres (the basketball court).
+   */
+  fit: 'stretch' | 'contain';
   formations: Record<number, Formation[]>;
   labelsFor: (size: number, idx: number, mirror?: boolean) => string[];
   mirrorSlots: (size: number, idx: number) => Slot[];
@@ -40,6 +53,9 @@ export const SPORTS: Record<Sport, SportConfig> = {
     sizes: [7, 9, 11],
     surface: 'field',
     ballEmoji: '⚽',
+    fieldW: FIELD_W,
+    fieldH: FIELD_H,
+    fit: 'stretch',
     formations: SOCCER_FORMATIONS,
     labelsFor: soccerLabels,
     mirrorSlots: soccerMirror,
@@ -51,6 +67,9 @@ export const SPORTS: Record<Sport, SportConfig> = {
     sizes: [5],
     surface: 'court',
     ballEmoji: '🏀',
+    fieldW: COURT_W,
+    fieldH: COURT_H,
+    fit: 'contain',
     formations: BASKETBALL_FORMATIONS,
     labelsFor: basketballLabels,
     mirrorSlots: basketballMirror,

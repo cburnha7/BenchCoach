@@ -1,13 +1,17 @@
-// 5v5 basketball, authored in the same 600 x 840 space as the soccer pitch so
-// every coordinate, the opponent mirror, and the shot-into-hoop markers keep
-// working unchanged. Our hoop sits at the bottom (y ~= 742), the opponent's at
-// the top; sets are laid out attacking the top hoop, mirroring how a soccer
-// lineup runs from its own goal up toward the opponent's.
+// 5v5 basketball. Unlike the soccer pitch (which is stretched to fill the
+// screen), the court is drawn to true proportions: a 50 ft x 94 ft floor at
+// 10 px/ft, so COURT_W x COURT_H = 500 x 940. Field.tsx scales this uniformly
+// (contain) and centres it. Our hoop sits at the bottom (y ~= 882), the
+// opponent's at the top; sets are laid out attacking the top hoop.
 
 import type { Formation, Slot } from './formations';
 
-/** Reflect a y across the centre line (y = 388) onto the far half. */
-const flipY = (y: number) => 776 - y;
+/** True-proportion court coordinate space (10 px per foot). */
+export const COURT_W = 500;
+export const COURT_H = 940;
+
+/** Reflect a y across the centre line (y = 470) onto the far half. */
+const flipY = (y: number) => COURT_H - y;
 
 export const BASKETBALL_FORMATIONS: Record<number, Formation[]> = {
   5: [
@@ -15,44 +19,44 @@ export const BASKETBALL_FORMATIONS: Record<number, Formation[]> = {
       name: 'Man',
       labels: ['PG', 'SG', 'SF', 'PF', 'C'],
       slots: [
-        { x: 300, y: 480 },
-        { x: 140, y: 370 },
-        { x: 460, y: 370 },
-        { x: 205, y: 205 },
-        { x: 395, y: 205 },
+        { x: 250, y: 520 },
+        { x: 110, y: 380 },
+        { x: 390, y: 380 },
+        { x: 180, y: 210 },
+        { x: 320, y: 210 },
       ],
     },
     {
       name: 'Spread',
       labels: ['PG', 'SG', 'SF', 'PF', 'C'],
       slots: [
-        { x: 300, y: 485 },
-        { x: 105, y: 360 },
-        { x: 495, y: 360 },
-        { x: 185, y: 215 },
-        { x: 300, y: 150 },
+        { x: 250, y: 540 },
+        { x: 95, y: 380 },
+        { x: 405, y: 380 },
+        { x: 165, y: 235 },
+        { x: 250, y: 150 },
       ],
     },
     {
       name: '1-3-1',
       labels: ['PG', 'SG', 'SF', 'PF', 'C'],
       slots: [
-        { x: 300, y: 495 },
-        { x: 110, y: 345 },
-        { x: 490, y: 345 },
-        { x: 300, y: 290 },
-        { x: 300, y: 155 },
+        { x: 250, y: 545 },
+        { x: 100, y: 375 },
+        { x: 400, y: 375 },
+        { x: 250, y: 320 },
+        { x: 250, y: 165 },
       ],
     },
     {
       name: 'Hi-Lo',
       labels: ['PG', 'SG', 'SF', 'PF', 'C'],
       slots: [
-        { x: 300, y: 470 },
-        { x: 140, y: 380 },
-        { x: 460, y: 380 },
-        { x: 300, y: 255 },
-        { x: 300, y: 150 },
+        { x: 250, y: 520 },
+        { x: 115, y: 390 },
+        { x: 385, y: 390 },
+        { x: 250, y: 290 },
+        { x: 250, y: 155 },
       ],
     },
   ],

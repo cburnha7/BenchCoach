@@ -2,6 +2,7 @@ import { AppState } from 'react-native';
 import { create } from 'zustand';
 import { storage, matchKey } from './storage';
 import { BENCH_Y, type TeamSize } from '../lib/formations';
+import { COURT_W, COURT_H } from '../lib/basketball';
 import { formationsFor, mirrorSlotsFor } from '../lib/sports';
 import {
   clamp,
@@ -199,6 +200,34 @@ export const useMatch = create<MatchStore>((set, get) => {
       match.roster.forEach((p) => {
         if (match.minutes[p.id] == null) match.minutes[p.id] = 0;
       });
+
+      // The basketball court moved from the 600x840 pitch space to a true-scale
+      // 500x940 court. A match saved by an older build would have on-field
+      // players off the new floor — snap them onto the current formation and
+      // re-mirror the opponents so nothing loads off-court.
+      if (sport === 'basketball') {
+        const slots = formationsFor(sport, size)[match.formationIdx]?.slots ?? [];
+        const stale = match.roster.some(
+          (p) => p.onField && (p.x > COURT_W || p.y > COURT_H)
+        );
+        if (stale && slots.length) {
+          let i = 0;
+          match.roster = match.roster.map((p) => {
+            if (!p.onField) return p;
+            const slot = slots[i++];
+            return slot
+              ? { ...p, x: slot.x, y: slot.y, homeX: slot.x, homeY: slot.y }
+              : p;
+          });
+          if (match.opponent.pos) {
+            match.opponent = {
+              ...match.opponent,
+              pos: mirrorSlotsFor(sport, size, match.opponent.formationIdx),
+            };
+          }
+        }
+      }
+
       set({ match, running: false, tickCount: 0 });
     },
 
@@ -776,8 +805,13 @@ export const useMatch = create<MatchStore>((set, get) => {
         const holder = m.holder
           ? m.roster.find((p) => p.id === m.holder && p.onField)
           : null;
-        const fromX = holder ? holder.x : 300;
-        const fromY = holder ? holder.y : y < 400 ? y + 150 : y - 150;
+        // Centre and mid-line differ by surface (soccer 600x840, court 500x940).
+        const isHoops = m.sport === 'basketball';
+        const cx = isHoops ? 250 : 300;
+        const mid = isHoops ? 470 : 400;
+        const off = isHoops ? 170 : 150;
+        const fromX = holder ? holder.x : cx;
+        const fromY = holder ? holder.y : y < mid ? y + off : y - off;
         return {
           ...m,
           shots: [...m.shots, { id: makeId('shot'), x, y, fromX, fromY }],

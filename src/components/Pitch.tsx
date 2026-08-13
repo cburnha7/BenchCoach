@@ -9,6 +9,7 @@ import {
 } from '@shopify/react-native-skia';
 import { theme } from '../lib/theme';
 import { FIELD_W, FIELD_H } from '../lib/formations';
+import { COURT_W, COURT_H } from '../lib/basketball';
 
 const STRIPES = 8;
 const PITCH_TOP = 8;
@@ -21,18 +22,25 @@ const CHALK_W = 2.5;
 const topArc = Skia.Path.MakeFromSVGString('M243,116 A60,60 0 0,0 357,116')!;
 const bottomArc = Skia.Path.MakeFromSVGString('M243,660 A60,60 0 0,1 357,660')!;
 
-// Three-point arcs, swept around each rim. Corners run straight up from the
-// baseline, then a 272-radius arc bulges toward centre court. (Curvature is a
-// close approximation, not a regulation ratio — this is a coaching board.)
+// Court boundary (5px inset so the line isn't clipped at the stage edge).
+const CT_X = 5;
+const CT_W = COURT_W - 10;
+const CT_MID = COURT_W / 2; // 250
+
+// Three-point arcs (radius 237.5 = 23.75 ft), swept AROUND each rim toward
+// centre court. Corners run straight from the baseline to where they meet the
+// arc, then the arc bulges away from the hoop. Sweep flags: bottom clockwise
+// (1) arcs up; top counter-clockwise (0) arcs down. Getting these backwards
+// draws the arc under the hoop.
 const arc3Bottom = Skia.Path.MakeFromSVGString(
-  'M52,768 L52,630 A272,272 0 0,0 548,630 L548,768'
+  'M35,935 L35,781 A237.5,237.5 0 0 1 465,781 L465,935'
 )!;
 const arc3Top = Skia.Path.MakeFromSVGString(
-  'M52,8 L52,146 A272,272 0 0,1 548,146 L548,8'
+  'M35,5 L35,159 A237.5,237.5 0 0 0 465,159 L465,5'
 )!;
 
 type Props = {
-  /** Rendered size in points. The 600x840 field space is scaled to fit. */
+  /** Rendered size in points. The sport's field space is scaled to fit. */
   width: number;
   height: number;
   /** Which surface to draw. Defaults to the soccer field. */
@@ -45,9 +53,12 @@ type Props = {
  * which lets each disc animate independently on the UI thread.
  */
 function PitchBase({ width, height, surface = 'field' }: Props) {
-  // Axes scale independently so the surface fills its box; see Field.tsx.
-  const scaleX = width / FIELD_W;
-  const scaleY = height / FIELD_H;
+  // Scale the sport's own coordinate space to the rendered box. The court and
+  // the pitch have different proportions, so the divisor depends on surface.
+  const fw = surface === 'court' ? COURT_W : FIELD_W;
+  const fh = surface === 'court' ? COURT_H : FIELD_H;
+  const scaleX = width / fw;
+  const scaleY = height / fh;
 
   return (
     <Canvas style={{ width, height }} pointerEvents="none">
@@ -57,20 +68,20 @@ function PitchBase({ width, height, surface = 'field' }: Props) {
           {Array.from({ length: STRIPES }).map((_, i) => (
             <Rect
               key={i}
-              x={PITCH_X + i * (PITCH_W / STRIPES)}
-              y={PITCH_TOP}
-              width={PITCH_W / STRIPES}
-              height={PITCH_H}
+              x={CT_X + i * (CT_W / STRIPES)}
+              y={CT_X}
+              width={CT_W / STRIPES}
+              height={COURT_H - 10}
               color={i % 2 ? theme.courtAlt : theme.court}
             />
           ))}
 
           {/* Boundary */}
           <Rect
-            x={PITCH_X}
-            y={PITCH_TOP}
-            width={PITCH_W}
-            height={PITCH_H}
+            x={CT_X}
+            y={CT_X}
+            width={CT_W}
+            height={COURT_H - 10}
             color={theme.courtLine}
             style="stroke"
             strokeWidth={CHALK_W}
@@ -78,30 +89,30 @@ function PitchBase({ width, height, surface = 'field' }: Props) {
 
           {/* Halfway line + centre (jump) circle */}
           <Rect
-            x={PITCH_X}
-            y={388 - CHALK_W / 2}
-            width={PITCH_W}
+            x={CT_X}
+            y={470 - CHALK_W / 2}
+            width={CT_W}
             height={CHALK_W}
             color={theme.courtLine}
           />
-          <Circle cx={300} cy={388} r={66} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
-          <Circle cx={300} cy={388} r={3} color={theme.courtLine} />
+          <Circle cx={CT_MID} cy={470} r={60} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+          <Circle cx={CT_MID} cy={470} r={3} color={theme.courtLine} />
 
           {/* Our end (bottom): paint, free-throw circle, 3-pt line, rim */}
-          <Rect x={230} y={578} width={140} height={190} color={theme.courtPaint} />
-          <Rect x={230} y={578} width={140} height={190} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
-          <Circle cx={300} cy={578} r={52} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+          <Rect x={170} y={745} width={160} height={190} color={theme.courtPaint} />
+          <Rect x={170} y={745} width={160} height={190} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+          <Circle cx={CT_MID} cy={745} r={60} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
           <Path path={arc3Bottom} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
-          <Rect x={270} y={752} width={60} height={4} color={theme.courtLine} />
-          <Circle cx={300} cy={742} r={9} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+          <Rect x={220} y={893} width={60} height={4} color={theme.courtLine} />
+          <Circle cx={CT_MID} cy={882} r={8} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
 
           {/* Their end (top) */}
-          <Rect x={230} y={8} width={140} height={190} color={theme.courtPaint} />
-          <Rect x={230} y={8} width={140} height={190} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
-          <Circle cx={300} cy={198} r={52} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+          <Rect x={170} y={5} width={160} height={190} color={theme.courtPaint} />
+          <Rect x={170} y={5} width={160} height={190} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+          <Circle cx={CT_MID} cy={195} r={60} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
           <Path path={arc3Top} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
-          <Rect x={270} y={24} width={60} height={4} color={theme.courtLine} />
-          <Circle cx={300} cy={34} r={9} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
+          <Rect x={220} y={43} width={60} height={4} color={theme.courtLine} />
+          <Circle cx={CT_MID} cy={58} r={8} color={theme.courtLine} style="stroke" strokeWidth={CHALK_W} />
         </Group>
       ) : (
         <Group transform={[{ scaleX }, { scaleY }]}>

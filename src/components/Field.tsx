@@ -17,7 +17,6 @@ import { Pitch } from './Pitch';
 import { PlayerDisc, DISC_R } from './PlayerDisc';
 import { OpponentMarker } from './OpponentMarker';
 import { TacticsLayer } from './TacticsLayer';
-import { FIELD_W, FIELD_H } from '../lib/formations';
 import { formationsFor, labelsFor, sportConfig } from '../lib/sports';
 import { useMatch } from '../store/useMatch';
 import { firstName } from '../lib/types';
@@ -144,20 +143,30 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
 
   if (!match) return <View style={styles.fill} onLayout={onLayout} />;
 
-  // Independent axes, then pulled back toward each other so the distortion
-  // never exceeds MAX_STRETCH.
-  let scaleX = box.width / FIELD_W;
-  let scaleY = box.height / FIELD_H;
+  const cfg = sportConfig(match.sport);
+  const FW = cfg.fieldW;
+  const FH = cfg.fieldH;
+
+  // Soccer stretches to fill the screen (distortion capped at MAX_STRETCH);
+  // basketball scales uniformly to true court proportions and letterboxes.
+  let scaleX = box.width / FW;
+  let scaleY = box.height / FH;
   if (scaleX > 0 && scaleY > 0) {
-    if (scaleX / scaleY > MAX_STRETCH) scaleX = scaleY * MAX_STRETCH;
-    if (scaleY / scaleX > MAX_STRETCH) scaleY = scaleX * MAX_STRETCH;
+    if (cfg.fit === 'contain') {
+      const s = Math.min(scaleX, scaleY);
+      scaleX = s;
+      scaleY = s;
+    } else {
+      if (scaleX / scaleY > MAX_STRETCH) scaleX = scaleY * MAX_STRETCH;
+      if (scaleY / scaleX > MAX_STRETCH) scaleY = scaleX * MAX_STRETCH;
+    }
   }
 
   const ready = scaleX > 0 && scaleY > 0;
   // Clamp against the measured box so sub-pixel rounding can never push the
-  // pitch under the controls below it.
-  const stageW = Math.min(FIELD_W * scaleX, box.width);
-  const stageH = Math.min(FIELD_H * scaleY, box.height);
+  // surface under the controls below it. The stage is centred by styles.fill.
+  const stageW = Math.min(FW * scaleX, box.width);
+  const stageH = Math.min(FH * scaleY, box.height);
 
   /**
    * Discs stay circular whatever the pitch does — a squashed player disc looks
@@ -231,7 +240,15 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
       runOnJS(addDrawing)(pairs);
     });
 
-  // Double-tap a goal mouth to drop a shot-on-goal burst there.
+  // Double-tap a goal/hoop to drop a shot marker there. Targets and tap bands
+  // depend on the surface (goals for soccer, rims for basketball).
+  const isCourt = cfg.surface === 'court';
+  const centerX = FW / 2;
+  const topGoalY = isCourt ? 58 : 30;
+  const botGoalY = isCourt ? FH - 58 : 742;
+  const goalHalfW = isCourt ? 90 : 80;
+  const topBandY = isCourt ? 130 : 58;
+  const botBandY = isCourt ? FH - 130 : 716;
   const goalTap = Gesture.Tap()
     .numberOfTaps(2)
     .maxDelay(220)
@@ -239,8 +256,15 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
       if (!success) return;
       const fx = e.x / scaleX;
       const fy = e.y / scaleY;
-      if (fx > 220 && fx < 380 && fy < 58) runOnJS(registerShot)(300, 30);
-      else if (fx > 220 && fx < 380 && fy > 716) runOnJS(registerShot)(300, 742);
+      if (fx > centerX - goalHalfW && fx < centerX + goalHalfW && fy < topBandY) {
+        runOnJS(registerShot)(centerX, topGoalY);
+      } else if (
+        fx > centerX - goalHalfW &&
+        fx < centerX + goalHalfW &&
+        fy > botBandY
+      ) {
+        runOnJS(registerShot)(centerX, botGoalY);
+      }
     });
 
   const boardGesture = Gesture.Race(goalTap, drawPan);
