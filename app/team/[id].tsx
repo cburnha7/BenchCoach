@@ -54,7 +54,6 @@ export default function TeamScreen() {
   const clearBoard = useMatch((s) => s.clearBoard);
   const resetOpponent = useMatch((s) => s.resetOpponent);
   const setCourtMode = useMatch((s) => s.setCourtMode);
-  const toggleFlipEnds = useMatch((s) => s.toggleFlipEnds);
 
   // Reset the board: every player back to their home spot (where they were
   // before any dragging), the opponent shape back to its mirror, and the
@@ -166,32 +165,25 @@ export default function TeamScreen() {
       />
     ) : null;
 
-  // Basketball-only: full/half court and flip-ends, on the bottom bar.
-  const courtControls =
+  // Basketball-only: the full/half court segmented toggle. On the tablet it sits
+  // in the middle of the bottom row; on phone it gets its own strip.
+  const courtSegment =
     team.sport === 'basketball' && ready ? (
-      <View style={styles.courtRow}>
-        <View style={styles.segment}>
-          {(['full', 'half'] as const).map((mode) => {
-            const on = match.courtMode === mode;
-            return (
-              <Pressable
-                key={mode}
-                style={[styles.segBtn, on && styles.segOn]}
-                onPress={() => setCourtMode(mode)}
-              >
-                <Text style={[styles.segText, on && styles.segTextOn]}>
-                  {mode === 'full' ? 'Full' : 'Half'}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <Pressable
-          style={({ pressed }) => [styles.btn, styles.flipBtn, pressed && styles.pressed]}
-          onPress={toggleFlipEnds}
-        >
-          <Text style={styles.btnText}>Flip ends</Text>
-        </Pressable>
+      <View style={styles.segment}>
+        {(['full', 'half'] as const).map((mode) => {
+          const on = match.courtMode === mode;
+          return (
+            <Pressable
+              key={mode}
+              style={[styles.segBtn, on && styles.segOn]}
+              onPress={() => setCourtMode(mode)}
+            >
+              <Text style={[styles.segText, on && styles.segTextOn]}>
+                {mode === 'full' ? 'Full' : 'Half'}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
     ) : null;
 
@@ -250,7 +242,9 @@ export default function TeamScreen() {
         onEmptySlot={(x, y) => setBringOnSlot({ x, y })}
       />
 
-      {courtControls}
+      {!wide && courtSegment && (
+        <View style={styles.courtRow}>{courtSegment}</View>
+      )}
 
       {wide ? (
         /* Tablet bottom row: the things that sit at the bottom on phone —
@@ -259,6 +253,8 @@ export default function TeamScreen() {
           {formationPicker(false)}
           {gearBtn}
           {resetBtn}
+          <View style={styles.spacer} />
+          {courtSegment}
           <View style={styles.spacer} />
           {rosterButton(styles.btnWide)}
           {subsButton(styles.btnWide)}
@@ -377,7 +373,6 @@ const styles = StyleSheet.create({
   segOn: { backgroundColor: theme.text },
   segText: { color: theme.text, fontWeight: '800', fontSize: 15 },
   segTextOn: { color: theme.bg },
-  flipBtn: {},
   gear: {
     width: 54,
     height: CONTROL_H,
