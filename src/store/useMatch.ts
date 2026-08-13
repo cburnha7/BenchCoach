@@ -2,7 +2,7 @@ import { AppState } from 'react-native';
 import { create } from 'zustand';
 import { storage, matchKey } from './storage';
 import { BENCH_Y, type TeamSize } from '../lib/formations';
-import { COURT_W, COURT_H } from '../lib/basketball';
+import { COURT_W, COURT_H, bballDims } from '../lib/basketball';
 import {
   ourFormations,
   ourSlots,
@@ -45,6 +45,50 @@ const placeOnSlots = (roster: Player[], slots: { x: number; y: number }[]) => {
     const s = slots[i];
     i += 1;
     return s ? { ...p, x: s.x, y: s.y, homeX: s.x, homeY: s.y } : p;
+  });
+};
+
+/** Which way an opponent (defender) retreats when it's hidden under one of our
+ *  players: toward its own end. Full court / soccer that's the top; half court
+ *  it's toward the hoop it defends (our offense) or the backcourt (our defense). */
+const oppEndDir = (m: MatchState) => {
+  if (m.sport === 'basketball' && m.courtMode === 'half') {
+    return m.side === 'offense' ? { dx: 1, dy: 0 } : { dx: -1, dy: 0 };
+  }
+  return { dx: 0, dy: -1 };
+};
+
+/**
+ * Keep opponent markers from hiding under our players: any that overlaps an
+ * on-field player is stepped toward its own end until it's clear (or it reaches
+ * the boundary). `roster` lets callers pass a freshly re-laid lineup.
+ */
+const bumpOpponent = (
+  m: MatchState,
+  oppSlots: { x: number; y: number }[],
+  roster: Player[] = m.roster
+) => {
+  const ours = roster.filter((p) => p.onField);
+  if (!ours.length || !oppSlots.length) return oppSlots;
+  const { w, h } = m.sport === 'basketball' ? bballDims(m.courtMode) : { w: 600, h: 840 };
+  const dir = oppEndDir(m);
+  const CLEAR = 46 * 46; // squared centre distance that still counts as covered
+  const STEP = 10;
+  const PAD = 18;
+  const covered = (x: number, y: number) =>
+    ours.some((o) => (o.x - x) ** 2 + (o.y - y) ** 2 < CLEAR);
+  return oppSlots.map((s) => {
+    let x = s.x;
+    let y = s.y;
+    let guard = 40;
+    while (guard-- > 0 && covered(x, y)) {
+      const nx = x + dir.dx * STEP;
+      const ny = y + dir.dy * STEP;
+      if (nx < PAD || nx > w - PAD || ny < PAD || ny > h - PAD) break;
+      x = nx;
+      y = ny;
+    }
+    return { x, y };
   });
 };
 
@@ -650,13 +694,14 @@ export const useMatch = create<MatchStore>((set, get) => {
         const next = { ...m, courtMode: mode };
         next.formationIdx = clamp(m.formationIdx, 0, Math.max(0, formCount(next) - 1));
         const oppIdx = clamp(m.opponent.formationIdx, 0, Math.max(0, oppCount(next) - 1));
+        const roster = benchLayout(placeOnSlots(m.roster, slotsOf(next)));
         return {
           ...next,
-          roster: benchLayout(placeOnSlots(m.roster, slotsOf(next))),
+          roster,
           opponent: {
             ...m.opponent,
             formationIdx: oppIdx,
-            pos: m.opponent.pos ? oppSlotsOf(next, oppIdx) : m.opponent.pos,
+            pos: m.opponent.pos ? bumpOpponent(next, oppSlotsOf(next, oppIdx), roster) : m.opponent.pos,
             holder: null,
           },
           arrows: [],
@@ -675,13 +720,14 @@ export const useMatch = create<MatchStore>((set, get) => {
         const next = { ...m, side };
         next.formationIdx = clamp(m.formationIdx, 0, Math.max(0, formCount(next) - 1));
         const oppIdx = clamp(m.opponent.formationIdx, 0, Math.max(0, oppCount(next) - 1));
+        const roster = placeOnSlots(m.roster, slotsOf(next));
         return {
           ...next,
-          roster: placeOnSlots(m.roster, slotsOf(next)),
+          roster,
           opponent: {
             ...m.opponent,
             formationIdx: oppIdx,
-            pos: m.opponent.pos ? oppSlotsOf(next, oppIdx) : m.opponent.pos,
+            pos: m.opponent.pos ? bumpOpponent(next, oppSlotsOf(next, oppIdx), roster) : m.opponent.pos,
             holder: null,
           },
           arrows: [],
@@ -957,7 +1003,7 @@ export const useMatch = create<MatchStore>((set, get) => {
         const on = !m.opponent.on;
         const pos =
           on && (!m.opponent.pos || m.opponent.pos.length !== m.size)
-            ? oppSlotsOf(m, m.opponent.formationIdx)
+            ? bumpOpponent(m, oppSlotsOf(m, m.opponent.formationIdx))
             : m.opponent.pos;
         return { ...m, opponent: { ...m.opponent, on, pos, holder: null } };
       });
@@ -971,7 +1017,7 @@ export const useMatch = create<MatchStore>((set, get) => {
           opponent: {
             ...m.opponent,
             formationIdx,
-            pos: oppSlotsOf(m, formationIdx),
+            pos: bumpOpponent(m, oppSlotsOf(m, formationIdx)),
             holder: null,
           },
         };
@@ -1004,7 +1050,7 @@ export const useMatch = create<MatchStore>((set, get) => {
         ...m,
         opponent: {
           ...m.opponent,
-          pos: oppSlotsOf(m, m.opponent.formationIdx),
+          pos: bumpOpponent(m, oppSlotsOf(m, m.opponent.formationIdx)),
         },
       }));
     },
