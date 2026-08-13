@@ -4,15 +4,16 @@ import { storage, matchKey } from './storage';
 import { BENCH_Y, type TeamSize } from '../lib/formations';
 import { COURT_W, COURT_H } from '../lib/basketball';
 import {
-  offenseFormations,
-  offenseSlots,
-  defenseFormations,
-  defenseSlots,
+  ourFormations,
+  ourSlots,
+  oppFormations,
+  oppSlots,
   type CourtMode,
 } from '../lib/sports';
 import {
   clamp,
   makeId,
+  FOUL_OUT,
   type Card,
   type FreeDraw,
   type Ghost,
@@ -20,18 +21,22 @@ import {
   type PassArrow,
   type Player,
   type QueuedSub,
+  type Side,
   type Sport,
 } from '../lib/types';
 
-/** The slots of the current (offensive) formation, in the active orientation. */
+/** The slots of our current formation (offense or defense), for the mode. */
 const slotsOf = (m: MatchState) =>
-  offenseSlots(m.sport, m.size, m.courtMode, m.formationIdx, m.flipEnds);
-/** How many formations this sport/mode offers for this team size. */
+  ourSlots(m.sport, m.size, m.courtMode, m.side, m.formationIdx);
+/** How many formations our side offers for this mode/size. */
 const formCount = (m: MatchState) =>
-  offenseFormations(m.sport, m.size, m.courtMode).length;
-/** Opponent (defensive) slots for the active orientation. */
+  ourFormations(m.sport, m.size, m.courtMode, m.side).length;
+/** Opponent slots (the opposite role) for the active layout. */
 const oppSlotsOf = (m: MatchState, idx: number) =>
-  defenseSlots(m.sport, m.size, m.courtMode, idx, m.flipEnds);
+  oppSlots(m.sport, m.size, m.courtMode, m.side, idx);
+/** How many formations the opponent has for the active layout. */
+const oppCount = (m: MatchState) =>
+  oppFormations(m.sport, m.size, m.courtMode, m.side).length;
 /** Put on-field players onto `slots` in order, re-homing them there. */
 const placeOnSlots = (roster: Player[], slots: { x: number; y: number }[]) => {
   let i = 0;
@@ -58,11 +63,12 @@ function emptyMatch(teamId: string, size: TeamSize, sport: Sport): MatchState {
     goals: [],
     stats: {},
     cards: {},
+    fouls: {},
     scratched: [],
     queue: [],
     formationIdx: 0,
     courtMode: 'full',
-    flipEnds: false,
+    side: 'offense',
     halfLen: 25,
     remaining: 25 * 60,
     opponent: { on: false, formationIdx: 0, pos: null, holder: null },
@@ -112,6 +118,8 @@ type MatchStore = {
   toggleScratch: (id: string) => void;
   giveCard: (id: string, card: Card) => void;
   clearCard: (id: string) => void;
+  addFoul: (id: string) => void;
+  removeFoul: (id: string) => void;
 
   bumpScore: (team: 'us' | 'them', delta: number) => void;
   recordGoal: (
@@ -130,7 +138,7 @@ type MatchStore = {
   applyFormation: () => void;
   resetPositions: () => void;
   setCourtMode: (mode: CourtMode) => void;
-  toggleFlipEnds: () => void;
+  setSide: (side: Side) => void;
 
   swap: (outId: string, inId: string) => void;
   swapPositions: (aId: string, bId: string) => void;
@@ -204,7 +212,10 @@ export const useMatch = create<MatchStore>((set, get) => {
         formationIdx: clamp(
           base.formationIdx ?? 0,
           0,
-          Math.max(0, offenseFormations(sport, size, base.courtMode ?? 'full').length - 1)
+          Math.max(
+            0,
+            ourFormations(sport, size, base.courtMode ?? 'full', base.side ?? 'offense').length - 1
+          )
         ),
         // The tactics board starts clean each session.
         arrows: [],
@@ -363,12 +374,15 @@ export const useMatch = create<MatchStore>((set, get) => {
         delete stats[id];
         const cards = { ...m.cards };
         delete cards[id];
+        const fouls = { ...m.fouls };
+        delete fouls[id];
         return {
           ...m,
           roster: benchLayout(m.roster.filter((p) => p.id !== id)),
           minutes,
           stats,
           cards,
+          fouls,
           scratched: m.scratched.filter((s) => s !== id),
           queue: m.queue.filter((q) => q.out !== id && q.in !== id),
         };
@@ -452,6 +466,35 @@ export const useMatch = create<MatchStore>((set, get) => {
       });
     },
 
+    /** Add a foul (basketball). Fouling out benches the player for good. */
+    addFoul: (id) => {
+      patch((m) => {
+        const n = (m.fouls[id] ?? 0) + 1;
+        const fouls = { ...m.fouls, [id]: n };
+        if (n < FOUL_OUT) return { ...m, fouls };
+        // Fouled out: off for good, like a red — bench and drop any queued sub.
+        return {
+          ...m,
+          fouls,
+          holder: m.holder === id ? null : m.holder,
+          roster: benchLayout(
+            m.roster.map((p) => (p.id === id ? { ...p, onField: false } : p))
+          ),
+          queue: m.queue.filter((q) => q.out !== id && q.in !== id),
+        };
+      });
+    },
+
+    removeFoul: (id) => {
+      patch((m) => {
+        const n = Math.max(0, (m.fouls[id] ?? 0) - 1);
+        const fouls = { ...m.fouls };
+        if (n === 0) delete fouls[id];
+        else fouls[id] = n;
+        return { ...m, fouls };
+      });
+    },
+
     bumpScore: (team, delta) => {
       patch((m) => ({
         ...m,
@@ -508,8 +551,8 @@ export const useMatch = create<MatchStore>((set, get) => {
     },
 
     resetScore: () => {
-      // A new game: clear the score, the goal log, and this game's bookings.
-      patch((m) => ({ ...m, score: { us: 0, them: 0 }, goals: [], cards: {} }));
+      // A new game: clear the score, the goal log, and this game's bookings/fouls.
+      patch((m) => ({ ...m, score: { us: 0, them: 0 }, goals: [], cards: {}, fouls: {} }));
     },
 
     resetStats: () => {
@@ -605,10 +648,8 @@ export const useMatch = create<MatchStore>((set, get) => {
       patch((m) => {
         if (mode === m.courtMode) return m;
         const next = { ...m, courtMode: mode };
-        const formationIdx = clamp(m.formationIdx, 0, Math.max(0, formCount(next) - 1));
-        next.formationIdx = formationIdx;
-        const oppCount = defenseFormations(m.sport, m.size, mode).length;
-        const oppIdx = clamp(m.opponent.formationIdx, 0, Math.max(0, oppCount - 1));
+        next.formationIdx = clamp(m.formationIdx, 0, Math.max(0, formCount(next) - 1));
+        const oppIdx = clamp(m.opponent.formationIdx, 0, Math.max(0, oppCount(next) - 1));
         return {
           ...next,
           roster: benchLayout(placeOnSlots(m.roster, slotsOf(next))),
@@ -627,16 +668,20 @@ export const useMatch = create<MatchStore>((set, get) => {
       });
     },
 
-    /** Flip which end we attack (full: top/bottom; half: hoop left/right). */
-    toggleFlipEnds: () => {
+    /** Show our offense or our defense; the opponent takes the opposite role. */
+    setSide: (side) => {
       patch((m) => {
-        const next = { ...m, flipEnds: !m.flipEnds };
+        if (side === m.side) return m;
+        const next = { ...m, side };
+        next.formationIdx = clamp(m.formationIdx, 0, Math.max(0, formCount(next) - 1));
+        const oppIdx = clamp(m.opponent.formationIdx, 0, Math.max(0, oppCount(next) - 1));
         return {
           ...next,
           roster: placeOnSlots(m.roster, slotsOf(next)),
           opponent: {
             ...m.opponent,
-            pos: m.opponent.pos ? oppSlotsOf(next, m.opponent.formationIdx) : m.opponent.pos,
+            formationIdx: oppIdx,
+            pos: m.opponent.pos ? oppSlotsOf(next, oppIdx) : m.opponent.pos,
             holder: null,
           },
           arrows: [],
@@ -920,8 +965,7 @@ export const useMatch = create<MatchStore>((set, get) => {
 
     setOpponentFormation: (idx) => {
       patch((m) => {
-        const count = defenseFormations(m.sport, m.size, m.courtMode).length;
-        const formationIdx = clamp(idx, 0, Math.max(0, count - 1));
+        const formationIdx = clamp(idx, 0, Math.max(0, oppCount(m) - 1));
         return {
           ...m,
           opponent: {
@@ -980,5 +1024,10 @@ export const onFieldCount = (m: MatchState) =>
 export const redCardCount = (m: MatchState) =>
   m.roster.filter((p) => m.cards[p.id] === 'red').length;
 
-/** Effective on-field cap: team size minus anyone sent off. */
-export const fieldCap = (m: MatchState) => m.size - redCardCount(m);
+/** How many players have fouled out (basketball). */
+export const fouledOutCount = (m: MatchState) =>
+  m.roster.filter((p) => (m.fouls[p.id] ?? 0) >= FOUL_OUT).length;
+
+/** Effective on-field cap: team size minus anyone sent off or fouled out. */
+export const fieldCap = (m: MatchState) =>
+  m.size - redCardCount(m) - fouledOutCount(m);

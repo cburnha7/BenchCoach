@@ -19,12 +19,13 @@ import { OpponentMarker } from './OpponentMarker';
 import { TacticsLayer } from './TacticsLayer';
 import {
   layoutFor,
-  offenseSlots,
-  offenseLabels,
-  defenseLabels,
+  ourSlots,
+  ourLabels,
+  oppLabels,
   hoopsFor,
   sportConfig,
 } from '../lib/sports';
+import { COURT_W, COURT_H } from '../lib/basketball';
 import { useMatch } from '../store/useMatch';
 import { firstName } from '../lib/types';
 import { radius, rgba } from '../lib/theme';
@@ -178,27 +179,33 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   /**
    * Discs stay circular whatever the pitch does — a squashed player disc looks
    * like a bug, while a slightly wide penalty box does not. Their positions
-   * follow the stretched axes; only their size uses the mean.
+   * follow the stretched axes; only their size uses the mean. Basketball sizes
+   * discs off the FULL-court fit so they read the same in half court (which is
+   * zoomed in more) as they do in full.
    */
-  const discScale = (scaleX + scaleY) / 2;
+  const discScale =
+    match.sport === 'basketball'
+      ? Math.min(box.width / COURT_W, box.height / COURT_H)
+      : (scaleX + scaleY) / 2;
 
   const queuedIds = new Set(match.queue.flatMap((q) => [q.out, q.in]));
 
   // Empty starter slots: claim the nearest formation slot for each on-field
   // player, then mark whatever is left as an open spot. Robust to dragging —
   // a moved player still holds the slot closest to where they ended up.
-  const slots = offenseSlots(
+  const slots = ourSlots(
     match.sport,
     match.size,
     match.courtMode,
-    match.formationIdx,
-    match.flipEnds
+    match.side,
+    match.formationIdx
   );
-  const labels = offenseLabels(match.sport, match.size, match.courtMode, match.formationIdx);
-  const oppLabels = defenseLabels(
+  const labels = ourLabels(match.sport, match.size, match.courtMode, match.side, match.formationIdx);
+  const opponentLabels = oppLabels(
     match.sport,
     match.size,
     match.courtMode,
+    match.side,
     match.opponent.formationIdx
   );
   const onFieldPlayers = match.roster.filter((p) => p.onField);
@@ -254,7 +261,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
 
   // Double-tap near a goal/rim to drop a shot marker there. Works for any
   // layout — soccer goals, both full-court rims, or the single half-court rim.
-  const hoops = hoopsFor(match.sport, match.courtMode, match.flipEnds);
+  const hoops = hoopsFor(match.sport, match.courtMode);
   const SHOT_R = 130;
   const goalTap = Gesture.Tap()
     .numberOfTaps(2)
@@ -280,12 +287,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
       {ready && (
         <View style={[styles.stage, { width: stageW, height: stageH }]}>
           <View style={styles.clip}>
-            <Pitch
-              width={stageW}
-              height={stageH}
-              surface={layout.surface}
-              flip={match.flipEnds}
-            />
+            <Pitch width={stageW} height={stageH} surface={layout.surface} />
           </View>
           <View pointerEvents="none" style={styles.rim} />
 
@@ -332,7 +334,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
                 index={i}
                 x={p.x}
                 y={p.y}
-                label={oppLabels[i] ?? '·'}
+                label={opponentLabels[i] ?? '·'}
                 scaleX={scaleX}
                 scaleY={scaleY}
                 markerScale={discScale}
@@ -353,7 +355,8 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
               scaleY={scaleY}
               discScale={discScale}
               scratched={match.scratched.includes(p.id)}
-              card={match.cards[p.id]}
+              card={match.sport === 'basketball' ? undefined : match.cards[p.id]}
+              fouls={match.sport === 'basketball' ? (match.fouls[p.id] ?? 0) : undefined}
               queued={queuedIds.has(p.id)}
               hasBall={match.holder === p.id}
               onMove={movePlayer}

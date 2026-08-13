@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { theme, contrastText, rgba } from '../lib/theme';
-import { badgeLabel, type Card, type Player } from '../lib/types';
+import { badgeLabel, FOUL_OUT, type Card, type Player } from '../lib/types';
 
 export const DISC_R = 30;
 /** Extra touch radius (field units) around the disc, for a generous tap area. */
@@ -29,8 +29,10 @@ type Props = {
   discScale: number;
   scratched: boolean;
   queued: boolean;
-  /** Booking to flag on the disc, if any. */
+  /** Booking to flag on the disc, if any (soccer). */
   card?: Card;
+  /** Foul count to flag on the disc (basketball); undefined for soccer. */
+  fouls?: number;
   /** True when this player is on the ball. */
   hasBall: boolean;
   /** Committed once, on release, in field coordinates. */
@@ -58,6 +60,7 @@ function PlayerDiscBase({
   scratched,
   queued,
   card,
+  fouls,
   hasBall,
   onMove,
   onDragEnd,
@@ -280,6 +283,19 @@ function PlayerDiscBase({
               ]}
             />
           )}
+
+          {/* Foul count (basketball) — red once fouled out. */}
+          {fouls != null && fouls > 0 && (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.foul,
+                { backgroundColor: fouls >= FOUL_OUT ? theme.danger : theme.surfaceAlt },
+              ]}
+            >
+              <Text style={styles.foulText}>{fouls}</Text>
+            </View>
+          )}
         </View>
       </Animated.View>
     </GestureDetector>
@@ -340,6 +356,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.4)',
   },
+  foul: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.45)',
+  },
+  foulText: { color: '#ffffff', fontWeight: '800', fontSize: 10 },
 });
 
 export const PlayerDisc = React.memo(PlayerDiscBase);

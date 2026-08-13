@@ -5,6 +5,9 @@ export type { TeamSize };
 /** The sports Bench Coach supports. Everything sport-specific keys off this. */
 export type Sport = 'soccer' | 'basketball';
 
+/** Basketball only: which alignment a team is shown in. */
+export type Side = 'offense' | 'defense';
+
 /** A team as it appears on the home screen. */
 export type Team = {
   id: string;
@@ -92,8 +95,11 @@ export type FreeDraw = {
  */
 export type PlayerStat = { g: number; a: number; pts: number };
 
-/** A booking. `red` means sent off — benched for good, unavailable to sub on. */
+/** A booking (soccer). `red` means sent off — benched for good. */
 export type Card = 'yellow' | 'red';
+
+/** Fouls to foul out (basketball). */
+export const FOUL_OUT = 5;
 
 /**
  * One goal by our team in the current game. Kept as a log (not just a count)
@@ -121,15 +127,17 @@ export type MatchState = {
   goals: GoalEvent[];
   /** Season goal/assist tallies per player id, cleared with a season reset. */
   stats: Record<string, PlayerStat>;
-  /** Bookings this game by player id. A red also forces the player off. */
+  /** Bookings this game by player id (soccer). A red also forces the player off. */
   cards: Record<string, Card>;
+  /** Fouls this game by player id (basketball). At FOUL_OUT the player is out. */
+  fouls: Record<string, number>;
   scratched: string[];
   queue: QueuedSub[];
   formationIdx: number;
-  /** Basketball only: whole court, or a single-hoop half court (rotated). */
+  /** Basketball only: whole court (transition), or a single-hoop half court. */
   courtMode: 'full' | 'half';
-  /** Basketball only: flip the end we attack (full: top/bottom; half: hoop L/R). */
-  flipEnds: boolean;
+  /** Basketball only: show our offense or our defense. */
+  side: Side;
   /** Half length in minutes. */
   halfLen: number;
   /** Seconds left on the current half. */

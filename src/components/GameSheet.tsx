@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMatch } from '../store/useMatch';
+import { FOUL_OUT } from '../lib/types';
 import { theme, radius } from '../lib/theme';
 
 type Props = {
@@ -60,14 +61,26 @@ export function GameSheet({ visible, onClose, teamName, color }: Props) {
       text: name(g.scorerId) ?? (isHoops ? 'Basket' : 'Goal'),
       meta: scoreMeta(g),
     })),
-    ...match.roster
-      .filter((p) => match.cards[p.id])
-      .map((p) => ({
-        key: `card-${p.id}`,
-        icon: match.cards[p.id] === 'red' ? '🟥' : '🟨',
-        text: p.name,
-        meta: null as string | null,
-      })),
+    ...(isHoops
+      ? match.roster
+          .filter((p) => (match.fouls[p.id] ?? 0) > 0)
+          .map((p) => {
+            const n = match.fouls[p.id] ?? 0;
+            return {
+              key: `foul-${p.id}`,
+              icon: n >= FOUL_OUT ? '🚫' : '⚠️',
+              text: p.name,
+              meta: `${n} foul${n === 1 ? '' : 's'}${n >= FOUL_OUT ? ' · out' : ''}` as string | null,
+            };
+          })
+      : match.roster
+          .filter((p) => match.cards[p.id])
+          .map((p) => ({
+            key: `card-${p.id}`,
+            icon: match.cards[p.id] === 'red' ? '🟥' : '🟨',
+            text: p.name,
+            meta: null as string | null,
+          }))),
   ];
 
   // Them scores aren't attributed. Soccer lists a marker per goal; basketball

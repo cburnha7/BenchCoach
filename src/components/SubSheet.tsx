@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useMatch } from '../store/useMatch';
-import { badgeLabel } from '../lib/types';
+import { badgeLabel, FOUL_OUT } from '../lib/types';
 import { theme, radius, glass } from '../lib/theme';
 
 type Props = {
@@ -26,15 +26,19 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
   const bringOnAt = useMatch((s) => s.bringOnAt);
   const giveCard = useMatch((s) => s.giveCard);
   const clearCard = useMatch((s) => s.clearCard);
+  const addFoul = useMatch((s) => s.addFoul);
+  const removeFoul = useMatch((s) => s.removeFoul);
 
   if (!match) return null;
+  const isHoops = match.sport === 'basketball';
   const out = outId ? match.roster.find((p) => p.id === outId) : null;
   const bringingOn = !out && !!slot;
   if (!out && !bringingOn) return null;
 
   const outCard = out ? match.cards[out.id] : undefined;
+  const outFouls = out ? match.fouls[out.id] ?? 0 : 0;
 
-  // Anyone scratched, sent off, or already tied to a queued sub is off the table.
+  // Anyone scratched, sent off, fouled out, or already queued is off the table.
   const queued = new Set(match.queue.flatMap((q) => [q.in, q.out]));
   const bench = match.roster
     .filter(
@@ -42,6 +46,7 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
         !p.onField &&
         !match.scratched.includes(p.id) &&
         match.cards[p.id] !== 'red' &&
+        (match.fouls[p.id] ?? 0) < FOUL_OUT &&
         !queued.has(p.id)
     )
     .sort((a, b) => (match.minutes[a.id] ?? 0) - (match.minutes[b.id] ?? 0));
@@ -95,8 +100,37 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
           </Pressable>
         </View>
 
-        {/* Bookings, only when subbing a specific player off. */}
-        {out && (
+        {/* Fouls (basketball) or bookings (soccer), when subbing a player off. */}
+        {out && isHoops && (
+          <View style={styles.cardRow}>
+            <Pressable
+              style={styles.cardBtn}
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                removeFoul(out.id);
+              }}
+              disabled={outFouls === 0}
+            >
+              <Text style={[styles.cardText, styles.foulStep]}>−</Text>
+            </Pressable>
+            <View style={styles.foulCount}>
+              <Text style={styles.foulCountText}>
+                {outFouls} {outFouls === 1 ? 'foul' : 'fouls'}
+                {outFouls >= FOUL_OUT ? ' · fouled out' : ''}
+              </Text>
+            </View>
+            <Pressable
+              style={styles.cardBtn}
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                addFoul(out.id);
+              }}
+            >
+              <Text style={styles.cardText}>+ Foul</Text>
+            </Pressable>
+          </View>
+        )}
+        {out && !isHoops && (
           <View style={styles.cardRow}>
             <Pressable
               style={[styles.cardBtn, outCard === 'yellow' && styles.cardBtnOn]}
@@ -185,6 +219,13 @@ const styles = StyleSheet.create({
   cardBtnOn: { borderColor: theme.ball },
   swatch: { width: 12, height: 16, borderRadius: 2 },
   cardText: { color: theme.text, fontWeight: '700', fontSize: 13.5 },
+  foulStep: { fontSize: 20, lineHeight: 22 },
+  foulCount: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  foulCountText: { color: theme.text, fontWeight: '700', fontSize: 14 },
   empty: { color: theme.textDim, textAlign: 'center', paddingVertical: 26, fontSize: 15 },
   scroll: { maxHeight: 380 },
   row: {

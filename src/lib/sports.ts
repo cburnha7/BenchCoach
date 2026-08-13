@@ -1,6 +1,6 @@
 // The one place sport-specific behaviour is assembled. The store, the field and
 // the pickers read through these helpers keyed off a team's `sport` and (for
-// basketball) the per-match court mode + flip.
+// basketball) the per-match court mode + side.
 
 import {
   FORMATIONS as SOCCER_FORMATIONS,
@@ -12,17 +12,17 @@ import {
   type Slot,
 } from './formations';
 import {
-  bballOffense,
-  bballOffenseSlots,
-  bballOffenseLabels,
-  bballDefense,
-  bballDefenseSlots,
-  bballDefenseLabels,
+  bballOurList,
+  bballOurSlots,
+  bballOurLabels,
+  bballOppList,
+  bballOppSlots,
+  bballOppLabels,
   bballHoops,
   bballDims,
   type CourtMode,
 } from './basketball';
-import type { Sport } from './types';
+import type { Side, Sport } from './types';
 
 export type { CourtMode };
 
@@ -62,61 +62,63 @@ export function layoutFor(s: Sport, mode: CourtMode) {
   return { w: FIELD_W, h: FIELD_H, fit: 'stretch' as const, surface: 'field' as const };
 }
 
-// --- our formation (offense) ---
+// --- our team (offense or defense) ---
 
-export function offenseFormations(s: Sport, size: number, mode: CourtMode): Formation[] {
-  return isHoops(s) ? bballOffense(size, mode) : SOCCER_FORMATIONS[size] ?? [];
+export function ourFormations(s: Sport, size: number, mode: CourtMode, side: Side): Formation[] {
+  return isHoops(s) ? bballOurList(size, mode, side) : SOCCER_FORMATIONS[size] ?? [];
 }
 
-export function offenseSlots(
+export function ourSlots(
   s: Sport,
   size: number,
   mode: CourtMode,
-  idx: number,
-  flip: boolean
+  side: Side,
+  idx: number
 ): Slot[] {
-  if (isHoops(s)) return bballOffenseSlots(size, mode, idx, flip);
+  if (isHoops(s)) return bballOurSlots(size, mode, side, idx);
   return SOCCER_FORMATIONS[size]?.[idx]?.slots ?? [];
 }
 
-export function offenseLabels(
+export function ourLabels(
   s: Sport,
   size: number,
   mode: CourtMode,
+  side: Side,
   idx: number
 ): string[] {
-  return isHoops(s) ? bballOffenseLabels(size, mode, idx) : soccerLabels(size, idx);
+  return isHoops(s) ? bballOurLabels(size, mode, side, idx) : soccerLabels(size, idx);
 }
 
-// --- opponent (defense / mirror) ---
+// --- opponent (the opposite role / mirror) ---
 
-export function defenseFormations(s: Sport, size: number, mode: CourtMode): Formation[] {
-  return isHoops(s) ? bballDefense(size, mode) : SOCCER_FORMATIONS[size] ?? [];
+export function oppFormations(s: Sport, size: number, mode: CourtMode, side: Side): Formation[] {
+  return isHoops(s) ? bballOppList(size, mode, side) : SOCCER_FORMATIONS[size] ?? [];
 }
 
-export function defenseSlots(
+export function oppSlots(
   s: Sport,
   size: number,
   mode: CourtMode,
-  idx: number,
-  flip: boolean
+  side: Side,
+  idx: number
 ): Slot[] {
-  if (isHoops(s)) return bballDefenseSlots(size, mode, idx, flip);
+  if (isHoops(s)) return bballOppSlots(size, mode, side, idx);
   return soccerMirror(size, idx);
 }
 
-export function defenseLabels(
+export function oppLabels(
   s: Sport,
   size: number,
   mode: CourtMode,
+  side: Side,
   idx: number
 ): string[] {
-  return isHoops(s) ? bballDefenseLabels(size, mode, idx) : soccerLabels(size, idx, true);
+  return isHoops(s) ? bballOppLabels(size, mode, side, idx) : soccerLabels(size, idx, true);
 }
 
-/** Tappable goals/rims for shot markers, in the active orientation. */
-export function hoopsFor(s: Sport, mode: CourtMode, flip: boolean): Slot[] {
-  if (isHoops(s)) return bballHoops(mode, flip);
+/** Tappable goals/rims for shot markers. */
+export function hoopsFor(s: Sport, mode: CourtMode): Slot[] {
+  if (isHoops(s)) return bballHoops(mode);
   return [
     { x: 300, y: 30 },
     { x: 300, y: 742 },

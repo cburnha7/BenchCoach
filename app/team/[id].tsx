@@ -22,7 +22,7 @@ import { RosterSheet } from '../../src/components/RosterSheet';
 import { SubSheet } from '../../src/components/SubSheet';
 import { useTeams } from '../../src/store/useTeams';
 import { useMatch, onFieldCount } from '../../src/store/useMatch';
-import { offenseFormations } from '../../src/lib/sports';
+import { ourFormations } from '../../src/lib/sports';
 import { DEFAULT_COLOR } from '../../src/lib/types';
 import { theme, radius, CONTROL_H } from '../../src/lib/theme';
 
@@ -54,6 +54,7 @@ export default function TeamScreen() {
   const clearBoard = useMatch((s) => s.clearBoard);
   const resetOpponent = useMatch((s) => s.resetOpponent);
   const setCourtMode = useMatch((s) => s.setCourtMode);
+  const setSide = useMatch((s) => s.setSide);
 
   // Reset the board: every player back to their home spot (where they were
   // before any dragging), the opponent shape back to its mirror, and the
@@ -157,7 +158,7 @@ export default function TeamScreen() {
   const formationPicker = (fill: boolean) =>
     ready ? (
       <FormationPicker
-        formations={offenseFormations(team.sport, team.size, match.courtMode)}
+        formations={ourFormations(team.sport, team.size, match.courtMode, match.side)}
         index={match.formationIdx}
         onSelect={setFormation}
         inline={!fill}
@@ -165,26 +166,44 @@ export default function TeamScreen() {
       />
     ) : null;
 
-  // Basketball-only: the full/half court segmented toggle. On the tablet it sits
-  // in the middle of the bottom row; on phone it gets its own strip.
-  const courtSegment =
+  // Basketball-only segmented toggles: full/half court and offense/defense. On
+  // the tablet they sit in the middle of the bottom row; on phone, their own strip.
+  const segmentControls =
     team.sport === 'basketball' && ready ? (
-      <View style={styles.segment}>
-        {(['full', 'half'] as const).map((mode) => {
-          const on = match.courtMode === mode;
-          return (
-            <Pressable
-              key={mode}
-              style={[styles.segBtn, on && styles.segOn]}
-              onPress={() => setCourtMode(mode)}
-            >
-              <Text style={[styles.segText, on && styles.segTextOn]}>
-                {mode === 'full' ? 'Full' : 'Half'}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <>
+        <View style={styles.segment}>
+          {(['full', 'half'] as const).map((mode) => {
+            const on = match.courtMode === mode;
+            return (
+              <Pressable
+                key={mode}
+                style={[styles.segBtn, on && styles.segOn]}
+                onPress={() => setCourtMode(mode)}
+              >
+                <Text style={[styles.segText, on && styles.segTextOn]}>
+                  {mode === 'full' ? 'Full' : 'Half'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <View style={styles.segment}>
+          {(['offense', 'defense'] as const).map((s) => {
+            const on = match.side === s;
+            return (
+              <Pressable
+                key={s}
+                style={[styles.segBtn, on && styles.segOn]}
+                onPress={() => setSide(s)}
+              >
+                <Text style={[styles.segText, on && styles.segTextOn]}>
+                  {s === 'offense' ? 'Offense' : 'Defense'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </>
     ) : null;
 
   return (
@@ -242,8 +261,8 @@ export default function TeamScreen() {
         onEmptySlot={(x, y) => setBringOnSlot({ x, y })}
       />
 
-      {!wide && courtSegment && (
-        <View style={styles.courtRow}>{courtSegment}</View>
+      {!wide && segmentControls && (
+        <View style={styles.courtRow}>{segmentControls}</View>
       )}
 
       {wide ? (
@@ -254,7 +273,7 @@ export default function TeamScreen() {
           {gearBtn}
           {resetBtn}
           <View style={styles.spacer} />
-          {courtSegment}
+          {segmentControls}
           <View style={styles.spacer} />
           {rosterButton(styles.btnWide)}
           {subsButton(styles.btnWide)}
@@ -366,7 +385,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   segBtn: {
-    paddingHorizontal: 22,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
