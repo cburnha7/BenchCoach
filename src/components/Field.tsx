@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -75,6 +75,9 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   const [box, setBox] = useState({ width: 0, height: 0 });
   // Sampled freehand-draw path (flattened x,y,x,y…) in field coordinates.
   const drawPts = useSharedValue<number[]>([]);
+  // Swap-detection radius squared (field units), kept in sync with the disc
+  // size so it shrinks along with the discs instead of staying a fixed 46.
+  const swapR2Ref = useRef(SWAP_RADIUS * SWAP_RADIUS);
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -90,12 +93,19 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
       points: { x: number; y: number }[]
     ) => {
       // Dropped onto another of our on-field players? Offer to swap spots.
+      // Only players actually shown on this diagram (the zone cap) are targets,
+      // and the radius tracks the current disc size.
       const m = useMatch.getState().match;
       if (m) {
+        const capSlots = ourSlots(m.sport, m.size, m.courtMode, m.side, m.formationIdx);
+        const cap = capSlots.length || m.roster.length;
+        const shownIds = new Set(
+          m.roster.filter((p) => p.onField).slice(0, cap).map((p) => p.id)
+        );
         let target: (typeof m.roster)[number] | null = null;
-        let best = SWAP_RADIUS * SWAP_RADIUS;
+        let best = swapR2Ref.current;
         for (const p of m.roster) {
-          if (p.id === id || !p.onField || m.scratched.includes(p.id)) continue;
+          if (p.id === id || !shownIds.has(p.id) || m.scratched.includes(p.id)) continue;
           const d2 = (p.x - to.x) ** 2 + (p.y - to.y) ** 2;
           if (d2 < best) {
             best = d2;
@@ -191,6 +201,12 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   const discScale = isHoops
     ? Math.min(box.width / COURT_W, box.height / COURT_H)
     : ((scaleX + scaleY) / 2) * density * (isLax ? 0.85 : 1);
+
+  // Keep the swap-detection radius proportional to the (possibly shrunk) discs,
+  // so dragging near a small disc doesn't over-eagerly offer a swap.
+  const posScale = (scaleX + scaleY) / 2;
+  const discShrink = posScale > 0 ? discScale / posScale : 1;
+  swapR2Ref.current = (SWAP_RADIUS * discShrink) ** 2;
 
   const queuedIds = new Set(match.queue.flatMap((q) => [q.out, q.in]));
 
