@@ -26,16 +26,16 @@ export type CourtMode = 'full' | 'half';
 const FULL_OFFENSE: Record<number, Formation[]> = {
   5: [
     {
-      // Transition: PG back in our half, C rim-running to the attacking hoop,
-      // the other three filling the lanes across half court.
+      // Transition / inbound: C under our own (bottom) hoop with the ball, PG
+      // back to receive, the other three filling the lanes at half court.
       name: 'Transition',
       labels: ['PG', 'SG', 'SF', 'PF', 'C'],
       slots: [
-        { x: 250, y: 700 },
+        { x: 170, y: 760 },
         { x: 90, y: 470 },
         { x: 410, y: 470 },
         { x: 250, y: 470 },
-        { x: 250, y: 120 },
+        { x: 250, y: 900 },
       ],
     },
   ],
@@ -179,18 +179,32 @@ export const bballOurSlots = (size: number, mode: CourtMode, side: Side, idx: nu
 export const bballOurLabels = (size: number, mode: CourtMode, side: Side, idx: number): string[] =>
   ourList(size, mode, side)[idx]?.labels ?? [];
 
-/** The opponent takes the opposite role. In half court that's simply the other
- *  side's shape; in full court it's our shape reflected to the far end. */
+/** The opponent takes the OPPOSITE role. In half court that's the other side's
+ *  shape (same half); in full court it's the other side's shape reflected to the
+ *  far end, so the defense sits back at its own basket rather than on top of us. */
+const oppTable = (size: number, mode: CourtMode, side: Side): Formation[] => {
+  const wantOffense = side === 'defense'; // opponent is offense when we defend
+  const table =
+    mode === 'full'
+      ? wantOffense
+        ? FULL_OFFENSE
+        : FULL_DEFENSE
+      : wantOffense
+        ? HALF_OFFENSE
+        : HALF_DEFENSE;
+  return table[size] ?? [];
+};
+
 export function bballOppList(size: number, mode: CourtMode, side: Side): Formation[] {
-  if (mode === 'full') return ourList(size, 'full', side);
-  return (side === 'offense' ? HALF_DEFENSE : HALF_OFFENSE)[size] ?? [];
+  return oppTable(size, mode, side);
 }
 
 export function bballOppSlots(size: number, mode: CourtMode, side: Side, idx: number): Slot[] {
-  if (mode === 'full') {
-    return ourList(size, 'full', side)[idx]?.slots.map((s) => ({ x: s.x, y: COURT_H - s.y })) ?? [];
-  }
-  return bballOppList(size, mode, side)[idx]?.slots ?? [];
+  const f = oppTable(size, mode, side)[idx];
+  if (!f) return [];
+  // Full court: reflect across the centre line so they defend/attack the far
+  // hoop. Half court: both teams share the one half, so no reflection.
+  return mode === 'full' ? f.slots.map((s) => ({ x: s.x, y: COURT_H - s.y })) : f.slots;
 }
 
 export const bballOppLabels = (size: number, mode: CourtMode, side: Side, idx: number): string[] =>
