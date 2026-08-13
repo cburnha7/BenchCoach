@@ -69,8 +69,8 @@ const FULL_OFFENSE: Record<number, Formation[]> = {
       ],
     },
     {
-      // A single post on the block, the other four spread around the arc.
-      name: '5 Low',
+      // 4-out 1-in: a single post on the block, four spread around the arc.
+      name: '4 Out',
       labels: ['PG', 'SG', 'SF', 'PF', 'C'],
       slots: [
         { x: 250, y: 345 },
@@ -132,8 +132,8 @@ const HALF_OFFENSE: Record<number, Formation[]> = {
       ],
     },
     {
-      // A single post on the block, the other four spread around the arc.
-      name: '5 Low',
+      // 4-out 1-in: a single post on the block, four spread around the arc.
+      name: '4 Out',
       labels: ['PG', 'SG', 'SF', 'PF', 'C'],
       slots: [
         { x: 95, y: 250 },
