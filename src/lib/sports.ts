@@ -23,12 +23,14 @@ import {
   type CourtMode,
 } from './basketball';
 import {
-  laxFormations,
-  laxSlots,
-  laxLabels,
-  laxMirror,
-  LAX_GOAL_TOP,
-  LAX_GOAL_BOTTOM,
+  laxOurList,
+  laxOurSlots,
+  laxOurLabels,
+  laxOppList,
+  laxOppSlots,
+  laxOppLabels,
+  laxHoops,
+  laxDims,
 } from './lacrosse';
 import type { Side, Sport } from './types';
 
@@ -71,7 +73,13 @@ export function layoutFor(s: Sport, mode: CourtMode) {
     };
   }
   if (isLax(s)) {
-    return { w: FIELD_W, h: FIELD_H, fit: 'stretch' as const, surface: 'lacrosse' as const };
+    const { w, h } = laxDims(mode);
+    return {
+      w,
+      h,
+      fit: (mode === 'half' ? 'contain' : 'stretch') as 'contain' | 'stretch',
+      surface: (mode === 'half' ? 'lax-half' : 'lacrosse') as 'lax-half' | 'lacrosse',
+    };
   }
   return { w: FIELD_W, h: FIELD_H, fit: 'stretch' as const, surface: 'field' as const };
 }
@@ -80,7 +88,7 @@ export function layoutFor(s: Sport, mode: CourtMode) {
 
 export function ourFormations(s: Sport, size: number, mode: CourtMode, side: Side): Formation[] {
   if (isHoops(s)) return bballOurList(size, mode, side);
-  if (isLax(s)) return laxFormations(size);
+  if (isLax(s)) return laxOurList(size, mode, side);
   return SOCCER_FORMATIONS[size] ?? [];
 }
 
@@ -92,7 +100,7 @@ export function ourSlots(
   idx: number
 ): Slot[] {
   if (isHoops(s)) return bballOurSlots(size, mode, side, idx);
-  if (isLax(s)) return laxSlots(size, idx);
+  if (isLax(s)) return laxOurSlots(size, mode, side, idx);
   return SOCCER_FORMATIONS[size]?.[idx]?.slots ?? [];
 }
 
@@ -104,7 +112,7 @@ export function ourLabels(
   idx: number
 ): string[] {
   if (isHoops(s)) return bballOurLabels(size, mode, side, idx);
-  if (isLax(s)) return laxLabels(size, idx);
+  if (isLax(s)) return laxOurLabels(size, mode, side, idx);
   return soccerLabels(size, idx);
 }
 
@@ -112,7 +120,7 @@ export function ourLabels(
 
 export function oppFormations(s: Sport, size: number, mode: CourtMode, side: Side): Formation[] {
   if (isHoops(s)) return bballOppList(size, mode, side);
-  if (isLax(s)) return laxFormations(size);
+  if (isLax(s)) return laxOppList(size, mode, side);
   return SOCCER_FORMATIONS[size] ?? [];
 }
 
@@ -124,7 +132,7 @@ export function oppSlots(
   idx: number
 ): Slot[] {
   if (isHoops(s)) return bballOppSlots(size, mode, side, idx);
-  if (isLax(s)) return laxMirror(size, idx);
+  if (isLax(s)) return laxOppSlots(size, mode, side, idx);
   return soccerMirror(size, idx);
 }
 
@@ -136,14 +144,14 @@ export function oppLabels(
   idx: number
 ): string[] {
   if (isHoops(s)) return bballOppLabels(size, mode, side, idx);
-  if (isLax(s)) return laxLabels(size, idx);
+  if (isLax(s)) return laxOppLabels(size, mode, side, idx);
   return soccerLabels(size, idx, true);
 }
 
 /** Tappable goals/rims for shot markers. */
 export function hoopsFor(s: Sport, mode: CourtMode): Slot[] {
   if (isHoops(s)) return bballHoops(mode);
-  if (isLax(s)) return [LAX_GOAL_TOP, LAX_GOAL_BOTTOM];
+  if (isLax(s)) return laxHoops(mode);
   return [
     { x: 300, y: 30 },
     { x: 300, y: 742 },

@@ -10,6 +10,7 @@ import {
 import { theme } from '../lib/theme';
 import { FIELD_W, FIELD_H } from '../lib/formations';
 import { COURT_W, COURT_H, HALF_W, HALF_H } from '../lib/basketball';
+import { LAX_HALF_W, LAX_HALF_H } from '../lib/lacrosse';
 
 const STRIPES = 8;
 const PITCH_TOP = 8;
@@ -51,7 +52,7 @@ type Props = {
   width: number;
   height: number;
   /** Which surface to draw. Defaults to the soccer field. */
-  surface?: 'field' | 'court-full' | 'court-half' | 'lacrosse';
+  surface?: 'field' | 'court-full' | 'court-half' | 'lacrosse' | 'lax-half';
 };
 
 /**
@@ -62,8 +63,22 @@ type Props = {
 function PitchBase({ width, height, surface = 'field' }: Props) {
   // Scale the sport's own coordinate space to the rendered box. Each surface
   // has its own proportions, so the divisor depends on surface.
-  const fw = surface === 'court-half' ? HALF_W : surface === 'court-full' ? COURT_W : FIELD_W;
-  const fh = surface === 'court-half' ? HALF_H : surface === 'court-full' ? COURT_H : FIELD_H;
+  const fw =
+    surface === 'court-half'
+      ? HALF_W
+      : surface === 'court-full'
+        ? COURT_W
+        : surface === 'lax-half'
+          ? LAX_HALF_W
+          : FIELD_W;
+  const fh =
+    surface === 'court-half'
+      ? HALF_H
+      : surface === 'court-full'
+        ? COURT_H
+        : surface === 'lax-half'
+          ? LAX_HALF_H
+          : FIELD_H;
   const scaleX = width / fw;
   const scaleY = height / fh;
 
@@ -236,10 +251,36 @@ function PitchBase({ width, height, surface = 'field' }: Props) {
           <Rect x={PITCH_X} y={526 - CHALK_W / 2} width={PITCH_W} height={CHALK_W} color={theme.chalk} />
 
           {/* Goals in their creases, inset from each end */}
-          <Circle cx={300} cy={120} r={44} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
-          <Rect x={284} y={104} width={32} height={32} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
-          <Circle cx={300} cy={656} r={44} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
-          <Rect x={284} y={640} width={32} height={32} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
+          <Circle cx={300} cy={120} r={30} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
+          <Rect x={289} y={109} width={22} height={22} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
+          <Circle cx={300} cy={656} r={30} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
+          <Rect x={289} y={645} width={22} height={22} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
+        </Group>
+      )}
+
+      {surface === 'lax-half' && (
+        <Group transform={[{ scaleX }, { scaleY }]}>
+          {/* Grass stripes running toward the goal */}
+          {Array.from({ length: STRIPES }).map((_, i) => (
+            <Rect
+              key={i}
+              x={5 + i * ((LAX_HALF_W - 10) / STRIPES)}
+              y={5}
+              width={(LAX_HALF_W - 10) / STRIPES}
+              height={LAX_HALF_H - 10}
+              color={i % 2 ? theme.turfAlt : theme.turf}
+            />
+          ))}
+
+          {/* Boundary */}
+          <Rect x={5} y={5} width={LAX_HALF_W - 10} height={LAX_HALF_H - 10} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
+
+          {/* Restraining line (top of the box) */}
+          <Rect x={160 - CHALK_W / 2} y={5} width={CHALK_W} height={LAX_HALF_H - 10} color={theme.chalk} />
+
+          {/* Goal in its crease, on the right */}
+          <Circle cx={440} cy={300} r={30} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
+          <Rect x={429} y={289} width={22} height={22} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
         </Group>
       )}
     </Canvas>

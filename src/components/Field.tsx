@@ -185,10 +185,12 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
    * discs off the FULL-court fit so they read the same in half court (which is
    * zoomed in more) as they do in full.
    */
-  const discScale =
-    match.sport === 'basketball'
-      ? Math.min(box.width / COURT_W, box.height / COURT_H)
-      : (scaleX + scaleY) / 2;
+  // Shrink discs as the roster grows so a full field (11v11, 10v10) doesn't
+  // crowd; lacrosse reads a touch smaller again.
+  const density = Math.min(1, 7 / match.size);
+  const discScale = isHoops
+    ? Math.min(box.width / COURT_W, box.height / COURT_H)
+    : ((scaleX + scaleY) / 2) * density * (isLax ? 0.85 : 1);
 
   const queuedIds = new Set(match.queue.flatMap((q) => [q.out, q.in]));
 

@@ -169,7 +169,7 @@ export default function TeamScreen() {
   // Basketball-only segmented toggles: full/half court and offense/defense. On
   // the tablet they sit in the middle of the bottom row; on phone, their own strip.
   const segmentControls =
-    team.sport === 'basketball' && ready ? (
+    (team.sport === 'basketball' || team.sport === 'lacrosse') && ready ? (
       <>
         <View style={styles.segment}>
           {(['full', 'half'] as const).map((mode) => {
