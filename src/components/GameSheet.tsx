@@ -10,7 +10,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMatch } from '../store/useMatch';
-import { FOUL_OUT } from '../lib/types';
+import {
+  FOUL_OUT,
+  formatClock,
+  penaltyTotal,
+  personalCount,
+  isFouledOutLax,
+} from '../lib/types';
 import { theme, radius } from '../lib/theme';
 
 type Props = {
@@ -35,7 +41,8 @@ export function GameSheet({ visible, onClose, teamName, color }: Props) {
   if (!match) return null;
 
   const isHoops = match.sport === 'basketball';
-  const scoreIcon = isHoops ? '🏀' : '⚽';
+  const isLax = match.sport === 'lacrosse';
+  const scoreIcon = isHoops ? '🏀' : isLax ? '🥍' : '⚽';
   const ptLabel = (n: number) => (n === 1 ? 'FT' : `${n} PT`);
 
   const name = (id: string | null) => {
@@ -73,14 +80,29 @@ export function GameSheet({ visible, onClose, teamName, color }: Props) {
               meta: `${n} foul${n === 1 ? '' : 's'}${n >= FOUL_OUT ? ' · out' : ''}` as string | null,
             };
           })
-      : match.roster
-          .filter((p) => match.cards[p.id])
-          .map((p) => ({
-            key: `card-${p.id}`,
-            icon: match.cards[p.id] === 'red' ? '🟥' : '🟨',
-            text: p.name,
-            meta: null as string | null,
-          }))),
+      : isLax
+        ? match.roster
+            .filter((p) => (match.penalties[p.id]?.length ?? 0) > 0)
+            .map((p) => {
+              const pens = match.penalties[p.id] ?? [];
+              const out = isFouledOutLax(pens);
+              return {
+                key: `pen-${p.id}`,
+                icon: out ? '🚫' : '🚩',
+                text: p.name,
+                meta: `${formatClock(penaltyTotal(pens))} · ${personalCount(pens)} personal${
+                  personalCount(pens) === 1 ? '' : 's'
+                }${out ? ' · out' : ''}` as string | null,
+              };
+            })
+        : match.roster
+            .filter((p) => match.cards[p.id])
+            .map((p) => ({
+              key: `card-${p.id}`,
+              icon: match.cards[p.id] === 'red' ? '🟥' : '🟨',
+              text: p.name,
+              meta: null as string | null,
+            }))),
   ];
 
   // Them scores aren't attributed. Soccer lists a marker per goal; basketball

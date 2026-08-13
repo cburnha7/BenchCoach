@@ -14,6 +14,7 @@ import {
   clamp,
   makeId,
   FOUL_OUT,
+  isFouledOutLax,
   type Card,
   type FreeDraw,
   type Ghost,
@@ -108,6 +109,7 @@ function emptyMatch(teamId: string, size: TeamSize, sport: Sport): MatchState {
     stats: {},
     cards: {},
     fouls: {},
+    penalties: {},
     scratched: [],
     queue: [],
     formationIdx: 0,
@@ -164,6 +166,8 @@ type MatchStore = {
   clearCard: (id: string) => void;
   addFoul: (id: string) => void;
   removeFoul: (id: string) => void;
+  addPenalty: (id: string, seconds: number) => void;
+  removePenalty: (id: string) => void;
 
   bumpScore: (team: 'us' | 'them', delta: number) => void;
   recordGoal: (
@@ -420,6 +424,8 @@ export const useMatch = create<MatchStore>((set, get) => {
         delete cards[id];
         const fouls = { ...m.fouls };
         delete fouls[id];
+        const penalties = { ...m.penalties };
+        delete penalties[id];
         return {
           ...m,
           roster: benchLayout(m.roster.filter((p) => p.id !== id)),
@@ -427,6 +433,7 @@ export const useMatch = create<MatchStore>((set, get) => {
           stats,
           cards,
           fouls,
+          penalties,
           scratched: m.scratched.filter((s) => s !== id),
           queue: m.queue.filter((q) => q.out !== id && q.in !== id),
         };
@@ -539,6 +546,34 @@ export const useMatch = create<MatchStore>((set, get) => {
       });
     },
 
+    /** Give a lacrosse penalty of `seconds`. Fouling out benches the player. */
+    addPenalty: (id, seconds) => {
+      patch((m) => {
+        const list = [...(m.penalties[id] ?? []), seconds];
+        const penalties = { ...m.penalties, [id]: list };
+        if (!isFouledOutLax(list)) return { ...m, penalties };
+        return {
+          ...m,
+          penalties,
+          holder: m.holder === id ? null : m.holder,
+          roster: benchLayout(
+            m.roster.map((p) => (p.id === id ? { ...p, onField: false } : p))
+          ),
+          queue: m.queue.filter((q) => q.out !== id && q.in !== id),
+        };
+      });
+    },
+
+    removePenalty: (id) => {
+      patch((m) => {
+        const list = (m.penalties[id] ?? []).slice(0, -1);
+        const penalties = { ...m.penalties };
+        if (list.length === 0) delete penalties[id];
+        else penalties[id] = list;
+        return { ...m, penalties };
+      });
+    },
+
     bumpScore: (team, delta) => {
       patch((m) => ({
         ...m,
@@ -596,7 +631,14 @@ export const useMatch = create<MatchStore>((set, get) => {
 
     resetScore: () => {
       // A new game: clear the score, the goal log, and this game's bookings/fouls.
-      patch((m) => ({ ...m, score: { us: 0, them: 0 }, goals: [], cards: {}, fouls: {} }));
+      patch((m) => ({
+        ...m,
+        score: { us: 0, them: 0 },
+        goals: [],
+        cards: {},
+        fouls: {},
+        penalties: {},
+      }));
     },
 
     resetStats: () => {
@@ -1070,9 +1112,11 @@ export const onFieldCount = (m: MatchState) =>
 export const redCardCount = (m: MatchState) =>
   m.roster.filter((p) => m.cards[p.id] === 'red').length;
 
-/** How many players have fouled out (basketball). */
+/** How many players have fouled out (basketball fouls or lacrosse penalties). */
 export const fouledOutCount = (m: MatchState) =>
-  m.roster.filter((p) => (m.fouls[p.id] ?? 0) >= FOUL_OUT).length;
+  m.roster.filter(
+    (p) => (m.fouls[p.id] ?? 0) >= FOUL_OUT || isFouledOutLax(m.penalties[p.id])
+  ).length;
 
 /** Effective on-field cap: team size minus anyone sent off or fouled out. */
 export const fieldCap = (m: MatchState) =>

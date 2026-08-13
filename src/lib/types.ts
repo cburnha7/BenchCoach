@@ -3,7 +3,7 @@ import type { TeamSize } from './formations';
 export type { TeamSize };
 
 /** The sports Bench Coach supports. Everything sport-specific keys off this. */
-export type Sport = 'soccer' | 'basketball';
+export type Sport = 'soccer' | 'basketball' | 'lacrosse';
 
 /** Basketball only: which alignment a team is shown in. */
 export type Side = 'offense' | 'defense';
@@ -101,6 +101,25 @@ export type Card = 'yellow' | 'red';
 /** Fouls to foul out (basketball). */
 export const FOUL_OUT = 5;
 
+/** Lacrosse penalty lengths offered, in seconds (0:30 technical, 1/2/3 personal). */
+export const LAX_PENALTY_OPTIONS = [30, 60, 120, 180];
+/** A penalty this long or longer counts as a personal foul. */
+export const LAX_PERSONAL_SECONDS = 60;
+/** Foul out after this many personals, or this many total penalty seconds. */
+export const LAX_FOUL_OUT_PERSONALS = 3;
+export const LAX_FOUL_OUT_SECONDS = 300;
+
+/** Total penalty time (seconds) a player has served. */
+export const penaltyTotal = (secs: number[] = []) =>
+  secs.reduce((a, b) => a + b, 0);
+/** How many of a player's penalties are personal fouls (1 min or longer). */
+export const personalCount = (secs: number[] = []) =>
+  secs.filter((s) => s >= LAX_PERSONAL_SECONDS).length;
+/** Whether a lacrosse player has fouled out (3 personals or 5:00 total). */
+export const isFouledOutLax = (secs: number[] = []) =>
+  personalCount(secs) >= LAX_FOUL_OUT_PERSONALS ||
+  penaltyTotal(secs) >= LAX_FOUL_OUT_SECONDS;
+
 /**
  * One goal by our team in the current game. Kept as a log (not just a count)
  * so a goal can be removed by name and its season stats backed out with it.
@@ -131,6 +150,8 @@ export type MatchState = {
   cards: Record<string, Card>;
   /** Fouls this game by player id (basketball). At FOUL_OUT the player is out. */
   fouls: Record<string, number>;
+  /** Penalties this game by player id (lacrosse), each a length in seconds. */
+  penalties: Record<string, number[]>;
   scratched: string[];
   queue: QueuedSub[];
   formationIdx: number;

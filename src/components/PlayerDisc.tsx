@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { theme, contrastText, rgba } from '../lib/theme';
-import { badgeLabel, FOUL_OUT, type Card, type Player } from '../lib/types';
+import { badgeLabel, type Card, type Player } from '../lib/types';
 
 export const DISC_R = 30;
 /** Extra touch radius (field units) around the disc, for a generous tap area. */
@@ -31,8 +31,10 @@ type Props = {
   queued: boolean;
   /** Booking to flag on the disc, if any (soccer). */
   card?: Card;
-  /** Foul count to flag on the disc (basketball); undefined for soccer. */
+  /** Foul/penalty count to flag on the disc (basketball / lacrosse). */
   fouls?: number;
+  /** Whether that count has fouled/penalized the player out (red badge). */
+  fouledOut?: boolean;
   /** True when this player is on the ball. */
   hasBall: boolean;
   /** Committed once, on release, in field coordinates. */
@@ -61,6 +63,7 @@ function PlayerDiscBase({
   queued,
   card,
   fouls,
+  fouledOut,
   hasBall,
   onMove,
   onDragEnd,
@@ -284,13 +287,13 @@ function PlayerDiscBase({
             />
           )}
 
-          {/* Foul count (basketball) — red once fouled out. */}
+          {/* Foul / penalty count — red once the player is out. */}
           {fouls != null && fouls > 0 && (
             <View
               pointerEvents="none"
               style={[
                 styles.foul,
-                { backgroundColor: fouls >= FOUL_OUT ? theme.danger : theme.surfaceAlt },
+                { backgroundColor: fouledOut ? theme.danger : theme.surfaceAlt },
               ]}
             >
               <Text style={styles.foulText}>{fouls}</Text>

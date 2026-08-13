@@ -27,7 +27,7 @@ import {
 } from '../lib/sports';
 import { COURT_W, COURT_H } from '../lib/basketball';
 import { useMatch } from '../store/useMatch';
-import { firstName } from '../lib/types';
+import { firstName, FOUL_OUT, isFouledOutLax } from '../lib/types';
 import { radius, rgba } from '../lib/theme';
 
 /** A drag shorter than this is a nudge, not a run worth drawing. */
@@ -154,6 +154,8 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   const layout = layoutFor(match.sport, match.courtMode);
   const FW = layout.w;
   const FH = layout.h;
+  const isHoops = match.sport === 'basketball';
+  const isLax = match.sport === 'lacrosse';
 
   // Soccer stretches to fill the screen (distortion capped at MAX_STRETCH);
   // basketball scales uniformly to true court proportions and letterboxes.
@@ -355,8 +357,21 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
               scaleY={scaleY}
               discScale={discScale}
               scratched={match.scratched.includes(p.id)}
-              card={match.sport === 'basketball' ? undefined : match.cards[p.id]}
-              fouls={match.sport === 'basketball' ? (match.fouls[p.id] ?? 0) : undefined}
+              card={isHoops || isLax ? undefined : match.cards[p.id]}
+              fouls={
+                isHoops
+                  ? match.fouls[p.id] ?? 0
+                  : isLax
+                    ? match.penalties[p.id]?.length ?? 0
+                    : undefined
+              }
+              fouledOut={
+                isHoops
+                  ? (match.fouls[p.id] ?? 0) >= FOUL_OUT
+                  : isLax
+                    ? isFouledOutLax(match.penalties[p.id])
+                    : false
+              }
               queued={queuedIds.has(p.id)}
               hasBall={match.holder === p.id}
               onMove={movePlayer}

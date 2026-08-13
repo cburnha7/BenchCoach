@@ -51,7 +51,7 @@ type Props = {
   width: number;
   height: number;
   /** Which surface to draw. Defaults to the soccer field. */
-  surface?: 'field' | 'court-full' | 'court-half';
+  surface?: 'field' | 'court-full' | 'court-half' | 'lacrosse';
 };
 
 /**
@@ -204,6 +204,42 @@ function PitchBase({ width, height, surface = 'field' }: Props) {
           <Rect x={232} y={722} width={136} height={46} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
           <Path path={bottomArc} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
           <Rect x={262} y={768} width={76} height={6} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
+        </Group>
+      )}
+
+      {surface === 'lacrosse' && (
+        <Group transform={[{ scaleX }, { scaleY }]}>
+          {/* Grass stripes */}
+          {Array.from({ length: STRIPES }).map((_, i) => (
+            <Rect
+              key={i}
+              x={PITCH_X}
+              y={PITCH_TOP + i * (PITCH_H / STRIPES)}
+              width={PITCH_W}
+              height={PITCH_H / STRIPES}
+              color={i % 2 ? theme.turfAlt : theme.turf}
+            />
+          ))}
+
+          {/* Boundary */}
+          <Rect x={PITCH_X} y={PITCH_TOP} width={PITCH_W} height={PITCH_H} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
+
+          {/* Midfield line + centre faceoff dot */}
+          <Rect x={PITCH_X} y={388 - CHALK_W / 2} width={PITCH_W} height={CHALK_W} color={theme.chalk} />
+          <Circle cx={300} cy={388} r={4} color={theme.chalk} />
+          {/* Wing hashes */}
+          <Rect x={120 - CHALK_W / 2} y={360} width={CHALK_W} height={56} color={theme.chalk} />
+          <Rect x={480 - CHALK_W / 2} y={360} width={CHALK_W} height={56} color={theme.chalk} />
+
+          {/* Restraining lines (the boxes) */}
+          <Rect x={PITCH_X} y={250 - CHALK_W / 2} width={PITCH_W} height={CHALK_W} color={theme.chalk} />
+          <Rect x={PITCH_X} y={526 - CHALK_W / 2} width={PITCH_W} height={CHALK_W} color={theme.chalk} />
+
+          {/* Goals in their creases, inset from each end */}
+          <Circle cx={300} cy={120} r={44} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
+          <Rect x={284} y={104} width={32} height={32} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
+          <Circle cx={300} cy={656} r={44} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
+          <Rect x={284} y={640} width={32} height={32} color={theme.chalk} style="stroke" strokeWidth={CHALK_W} />
         </Group>
       )}
     </Canvas>

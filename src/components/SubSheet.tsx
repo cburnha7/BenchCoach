@@ -2,7 +2,15 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useMatch } from '../store/useMatch';
-import { badgeLabel, FOUL_OUT } from '../lib/types';
+import {
+  badgeLabel,
+  formatClock,
+  FOUL_OUT,
+  LAX_PENALTY_OPTIONS,
+  penaltyTotal,
+  personalCount,
+  isFouledOutLax,
+} from '../lib/types';
 import { theme, radius, glass } from '../lib/theme';
 
 type Props = {
@@ -28,15 +36,19 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
   const clearCard = useMatch((s) => s.clearCard);
   const addFoul = useMatch((s) => s.addFoul);
   const removeFoul = useMatch((s) => s.removeFoul);
+  const addPenalty = useMatch((s) => s.addPenalty);
+  const removePenalty = useMatch((s) => s.removePenalty);
 
   if (!match) return null;
   const isHoops = match.sport === 'basketball';
+  const isLax = match.sport === 'lacrosse';
   const out = outId ? match.roster.find((p) => p.id === outId) : null;
   const bringingOn = !out && !!slot;
   if (!out && !bringingOn) return null;
 
   const outCard = out ? match.cards[out.id] : undefined;
   const outFouls = out ? match.fouls[out.id] ?? 0 : 0;
+  const outPens = out ? match.penalties[out.id] ?? [] : [];
 
   // Anyone scratched, sent off, fouled out, or already queued is off the table.
   const queued = new Set(match.queue.flatMap((q) => [q.in, q.out]));
@@ -47,6 +59,7 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
         !match.scratched.includes(p.id) &&
         match.cards[p.id] !== 'red' &&
         (match.fouls[p.id] ?? 0) < FOUL_OUT &&
+        !isFouledOutLax(match.penalties[p.id]) &&
         !queued.has(p.id)
     )
     .sort((a, b) => (match.minutes[a.id] ?? 0) - (match.minutes[b.id] ?? 0));
@@ -130,7 +143,45 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
             </Pressable>
           </View>
         )}
-        {out && !isHoops && (
+        {out && isLax && (
+          <View style={styles.penWrap}>
+            <View style={styles.penRow}>
+              {LAX_PENALTY_OPTIONS.map((sec) => (
+                <Pressable
+                  key={sec}
+                  style={styles.penBtn}
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    addPenalty(out.id, sec);
+                  }}
+                >
+                  <Text style={styles.penBtnText}>{formatClock(sec)}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.penInfo}>
+              <Text style={styles.penInfoText}>
+                {outPens.length > 0
+                  ? `${formatClock(penaltyTotal(outPens))} · ${personalCount(outPens)} personal${
+                      personalCount(outPens) === 1 ? '' : 's'
+                    }${isFouledOutLax(outPens) ? ' · fouled out' : ''}`
+                  : 'No penalties'}
+              </Text>
+              {outPens.length > 0 && (
+                <Pressable
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    removePenalty(out.id);
+                  }}
+                  hitSlop={8}
+                >
+                  <Text style={styles.penUndo}>Undo</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )}
+        {out && !isHoops && !isLax && (
           <View style={styles.cardRow}>
             <Pressable
               style={[styles.cardBtn, outCard === 'yellow' && styles.cardBtnOn]}
@@ -226,6 +277,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   foulCountText: { color: theme.text, fontWeight: '700', fontSize: 14 },
+  penWrap: { marginBottom: 8 },
+  penRow: { flexDirection: 'row', gap: 8 },
+  penBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    backgroundColor: theme.control,
+    borderWidth: 1,
+    borderColor: theme.controlBorder,
+    alignItems: 'center',
+  },
+  penBtnText: {
+    color: theme.text,
+    fontWeight: '800',
+    fontSize: 14,
+    fontVariant: ['tabular-nums'],
+  },
+  penInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    paddingHorizontal: 2,
+  },
+  penInfoText: { color: theme.textDim, fontSize: 13, fontWeight: '600' },
+  penUndo: { color: theme.danger, fontSize: 13, fontWeight: '800' },
   empty: { color: theme.textDim, textAlign: 'center', paddingVertical: 26, fontSize: 15 },
   scroll: { maxHeight: 380 },
   row: {

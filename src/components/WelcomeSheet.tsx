@@ -47,9 +47,9 @@ const STEPS: Step[] = [
     body: 'Tap + on the scoreboard to log goals or baskets. Use the gear for the opponent shadow, run trails and clearing the board.',
   },
   {
-    emoji: '⚽🏀',
-    title: 'Two sports',
-    body: 'Tap the sport name at the top to switch between Soccer and Basketball — each with its own court, positions and formations.',
+    emoji: '⚽🏀🥍',
+    title: 'Pick your sport',
+    body: 'Tap the sport name at the top to switch between Soccer, Basketball and Lacrosse — each with its own field, positions and formations.',
   },
 ];
 
