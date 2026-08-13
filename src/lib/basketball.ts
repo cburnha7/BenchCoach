@@ -68,6 +68,18 @@ const FULL_OFFENSE: Record<number, Formation[]> = {
         { x: 250, y: 155 },
       ],
     },
+    {
+      // A single post on the block, the other four spread around the arc.
+      name: '5 Low',
+      labels: ['PG', 'SG', 'SF', 'PF', 'C'],
+      slots: [
+        { x: 250, y: 345 },
+        { x: 110, y: 300 },
+        { x: 390, y: 300 },
+        { x: 70, y: 120 },
+        { x: 330, y: 160 },
+      ],
+    },
   ],
 };
 
@@ -117,6 +129,18 @@ const HALF_OFFENSE: Record<number, Formation[]> = {
         { x: 225, y: 250 },
         { x: 225, y: 390 },
         { x: 370, y: 250 },
+      ],
+    },
+    {
+      // A single post on the block, the other four spread around the arc.
+      name: '5 Low',
+      labels: ['PG', 'SG', 'SF', 'PF', 'C'],
+      slots: [
+        { x: 95, y: 250 },
+        { x: 205, y: 110 },
+        { x: 205, y: 390 },
+        { x: 425, y: 80 },
+        { x: 425, y: 320 },
       ],
     },
   ],
