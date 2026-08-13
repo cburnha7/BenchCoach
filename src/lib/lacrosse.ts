@@ -95,13 +95,15 @@ const FULL_OFFENSE: Record<number, Formation[]> = {
 const FULL_DEFENSE: Record<number, Formation[]> = {
   10: [
     {
+      // Attackmen stay onside in the offensive half (above the midline, y<388);
+      // middies drop back to defend, close D and G at our goal.
       name: 'Settled',
       labels: ['G', 'D', 'D', 'D', 'M', 'M', 'M', 'A', 'A', 'A'],
       slots: [
         { x: 300, y: 700 },
         { x: 180, y: 640 }, { x: 300, y: 665 }, { x: 420, y: 640 },
-        { x: 160, y: 555 }, { x: 300, y: 565 }, { x: 440, y: 555 },
-        { x: 200, y: 410 }, { x: 400, y: 410 }, { x: 300, y: 375 },
+        { x: 160, y: 520 }, { x: 300, y: 535 }, { x: 440, y: 520 },
+        { x: 200, y: 320 }, { x: 400, y: 320 }, { x: 300, y: 270 },
       ],
     },
   ],
@@ -112,8 +114,8 @@ const FULL_DEFENSE: Record<number, Formation[]> = {
       slots: [
         { x: 300, y: 700 },
         { x: 220, y: 645 }, { x: 380, y: 645 },
-        { x: 210, y: 560 }, { x: 390, y: 560 },
-        { x: 240, y: 420 }, { x: 360, y: 420 },
+        { x: 210, y: 525 }, { x: 390, y: 525 },
+        { x: 240, y: 320 }, { x: 360, y: 320 },
       ],
     },
   ],
@@ -124,8 +126,8 @@ const FULL_DEFENSE: Record<number, Formation[]> = {
       slots: [
         { x: 300, y: 700 },
         { x: 220, y: 645 }, { x: 380, y: 645 },
-        { x: 300, y: 560 },
-        { x: 240, y: 420 }, { x: 360, y: 420 },
+        { x: 300, y: 525 },
+        { x: 240, y: 320 }, { x: 360, y: 320 },
       ],
     },
   ],
