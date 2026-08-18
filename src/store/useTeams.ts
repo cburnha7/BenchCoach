@@ -7,6 +7,7 @@ import {
   type Team,
   type TeamSize,
 } from '../lib/types';
+import { isSportEnabled } from '../lib/sports';
 
 type TeamsState = {
   teams: Team[];
@@ -36,7 +37,9 @@ export const useTeams = create<TeamsState>((set, get) => ({
       storage.read<Team[]>(TEAMS_KEY),
       storage.read<Sport>(SPORT_KEY),
     ]);
-    set({ teams: saved ?? [], sport: sport ?? 'soccer', hydrated: true });
+    // Fall back to soccer if the saved sport is parked (e.g. lacrosse).
+    const active = sport && isSportEnabled(sport) ? sport : 'soccer';
+    set({ teams: saved ?? [], sport: active, hydrated: true });
   },
 
   setSport: async (sport) => {

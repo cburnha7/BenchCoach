@@ -50,7 +50,13 @@ export const SPORTS: Record<Sport, SportConfig> = {
   lacrosse: { key: 'lacrosse', label: 'Lacrosse', emoji: '🥍', sizes: [6, 7, 10], ballEmoji: '🥍' },
 };
 
-export const SPORT_LIST: SportConfig[] = [SPORTS.soccer, SPORTS.basketball, SPORTS.lacrosse];
+// Sports offered in the picker. Lacrosse is built (all its code stays in the
+// repo) but parked for now — add SPORTS.lacrosse back here to re-enable it.
+export const SPORT_LIST: SportConfig[] = [SPORTS.soccer, SPORTS.basketball];
+
+/** Whether a sport is currently selectable (in the picker). */
+export const isSportEnabled = (s: Sport) => SPORT_LIST.some((x) => x.key === s);
+
 export const sportConfig = (s: Sport) => SPORTS[s];
 export const sizesFor = (s: Sport) => SPORTS[s].sizes;
 export const defaultSize = (s: Sport) =>
