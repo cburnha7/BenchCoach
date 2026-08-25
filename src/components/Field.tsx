@@ -290,7 +290,7 @@ export function Field({ color, trailsOn, onPlayerAction, onEmptySlot }: Props) {
   const SHOT_R = 130;
   const goalTap = Gesture.Tap()
     .numberOfTaps(2)
-    .maxDelay(220)
+    .maxDelay(320)
     .onEnd((e, success) => {
       if (!success) return;
       const fx = e.x / scaleX;

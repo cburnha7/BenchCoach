@@ -150,11 +150,12 @@ function PlayerDiscBase({
       );
     });
 
-  // Short delay so a single tap resolves quickly; no duration cap so a slow
-  // tap still counts.
+  // A forgiving double tap: a wider gap between taps (so a slightly slow tap
+  // still counts) and some tolerance for the finger landing a bit off.
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
-    .maxDelay(180)
+    .maxDelay(320)
+    .maxDistance(40)
     .onEnd((_e, success) => {
       if (success) runOnJS(ball)(player.id);
     });

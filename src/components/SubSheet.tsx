@@ -31,6 +31,7 @@ type Props = {
 export function SubSheet({ outId, slot, onClose, color }: Props) {
   const match = useMatch((s) => s.match);
   const queueSub = useMatch((s) => s.queueSub);
+  const dropQueued = useMatch((s) => s.dropQueued);
   const bringOnAt = useMatch((s) => s.bringOnAt);
   const giveCard = useMatch((s) => s.giveCard);
   const clearCard = useMatch((s) => s.clearCard);
@@ -49,6 +50,21 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
   const outCard = out ? match.cards[out.id] : undefined;
   const outFouls = out ? match.fouls[out.id] ?? 0 : 0;
   const outPens = out ? match.penalties[out.id] ?? [] : [];
+
+  // If this player is already tied to a queued sub, offer to cancel it.
+  const qIndex = out
+    ? match.queue.findIndex((q) => q.out === out.id || q.in === out.id)
+    : -1;
+  const qEntry = qIndex >= 0 ? match.queue[qIndex] : undefined;
+  const nameOf = (id: string) =>
+    match.roster.find((r) => r.id === id)?.name ?? 'Unknown';
+
+  const cancelQueued = () => {
+    if (qIndex < 0) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    dropQueued(qIndex);
+    onClose();
+  };
 
   // Anyone scratched, sent off, fouled out, or already queued is off the table.
   const queued = new Set(match.queue.flatMap((q) => [q.in, q.out]));
@@ -99,7 +115,9 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
                 <Text style={styles.title} numberOfLines={1}>
                   {out.name}
                 </Text>
-                <Text style={styles.sub}>comes off · tap who comes on</Text>
+                <Text style={styles.sub}>
+                  {qEntry ? 'A sub is already queued' : 'comes off · tap who comes on'}
+                </Text>
               </View>
             </>
           ) : (
@@ -199,7 +217,16 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
           </View>
         )}
 
-        {bench.length === 0 ? (
+        {qEntry ? (
+          <View style={styles.queuedPanel}>
+            <Text style={styles.queuedText} numberOfLines={2}>
+              Sub queued: {nameOf(qEntry.out)} → {nameOf(qEntry.in)}
+            </Text>
+            <Pressable style={styles.cancelSub} onPress={cancelQueued}>
+              <Text style={styles.cancelSubText}>Cancel this sub</Text>
+            </Pressable>
+          </View>
+        ) : bench.length === 0 ? (
           <Text style={styles.empty}>Nobody available on the bench.</Text>
         ) : (
           <ScrollView style={styles.scroll}>
@@ -304,6 +331,16 @@ const styles = StyleSheet.create({
   penInfoText: { color: theme.textDim, fontSize: 13, fontWeight: '600' },
   penUndo: { color: theme.danger, fontSize: 13, fontWeight: '800' },
   empty: { color: theme.textDim, textAlign: 'center', paddingVertical: 26, fontSize: 15 },
+  queuedPanel: { paddingVertical: 14, alignItems: 'center', gap: 12 },
+  queuedText: { color: theme.text, fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  cancelSub: {
+    alignSelf: 'stretch',
+    paddingVertical: 14,
+    borderRadius: radius.lg,
+    backgroundColor: theme.danger,
+    alignItems: 'center',
+  },
+  cancelSubText: { color: theme.onAccent, fontWeight: '800', fontSize: 15 },
   scroll: { maxHeight: 380 },
   row: {
     flexDirection: 'row',
