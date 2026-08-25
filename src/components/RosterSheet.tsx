@@ -139,13 +139,16 @@ export function RosterSheet({ visible, onClose, teamName, color }: Props) {
   return (
     <Modal
       visible={visible}
+      transparent
       animationType="slide"
-      presentationStyle="pageSheet"
       onRequestClose={onClose}
-      onDismiss={onClose}
     >
-      {/* RNGH needs its own root inside a Modal for the swipe to register. */}
-      <GestureHandlerRootView style={styles.sheet}>
+      {/* Tap the dimmed area outside the sheet to close it. */}
+      <Pressable style={styles.scrim} onPress={onClose} />
+      <View style={[styles.card, { top: insets.top + 40 }]}>
+        {/* RNGH needs its own root inside a Modal for the swipe to register. */}
+        <GestureHandlerRootView style={styles.sheet}>
+          <View style={styles.grip} />
         <View style={styles.header}>
           <View style={[styles.accent, { backgroundColor: color }]} />
           <View style={styles.headerInner}>
@@ -250,7 +253,8 @@ export function RosterSheet({ visible, onClose, teamName, color }: Props) {
           onClose={() => setStatsOpen(false)}
           color={color}
         />
-      </GestureHandlerRootView>
+        </GestureHandlerRootView>
+      </View>
     </Modal>
   );
 }
@@ -416,6 +420,26 @@ function RosterRow({
 }
 
 const styles = StyleSheet.create({
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: theme.scrim },
+  card: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: theme.bg,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    overflow: 'hidden',
+  },
+  grip: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.border,
+    marginTop: 8,
+    marginBottom: 2,
+  },
   sheet: { flex: 1, backgroundColor: theme.bg },
   header: {
     flexDirection: 'row',
