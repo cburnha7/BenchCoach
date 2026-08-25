@@ -142,6 +142,7 @@ export function RosterSheet({ visible, onClose, teamName, color }: Props) {
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={onClose}
+      onDismiss={onClose}
     >
       {/* RNGH needs its own root inside a Modal for the swipe to register. */}
       <GestureHandlerRootView style={styles.sheet}>
@@ -214,7 +215,7 @@ export function RosterSheet({ visible, onClose, teamName, color }: Props) {
           renderItem={renderItem}
           contentContainerStyle={[
             styles.list,
-            { paddingBottom: insets.bottom + 84 },
+            { paddingBottom: insets.bottom + 24 },
           ]}
           ListEmptyComponent={
             <View style={styles.empty}>
@@ -235,13 +236,6 @@ export function RosterSheet({ visible, onClose, teamName, color }: Props) {
             ) : null
           }
         />
-
-        <Pressable
-          style={[styles.done, { bottom: insets.bottom + 12 }]}
-          onPress={onClose}
-        >
-          <Text style={styles.doneText}>Done</Text>
-        </Pressable>
 
         <ScanSheet
           visible={scanning}
@@ -596,21 +590,4 @@ const styles = StyleSheet.create({
     marginTop: 6,
     lineHeight: 20,
   },
-  done: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    paddingVertical: 15,
-    borderRadius: radius.lg,
-    backgroundColor: theme.control,
-    borderWidth: 1,
-    borderColor: theme.controlBorder,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowRadius: 14,
-    shadowOpacity: 0.5,
-    elevation: 10,
-  },
-  doneText: { color: theme.text, fontWeight: '700', fontSize: 16 },
 });
