@@ -99,6 +99,8 @@ export default function TeamScreen() {
   }
 
   const color = team.color ?? DEFAULT_COLOR;
+  // Basketball is a stripped-down tactics board — no clock, no score.
+  const isHoops = team.sport === 'basketball';
   const ready = match && match.teamId === team.id;
   const queued = ready ? match.queue.length : 0;
   const boardActive =
@@ -221,7 +223,14 @@ export default function TeamScreen() {
         }}
       />
 
-      {wide ? (
+      {isHoops ? (
+        /* Basketball is a simple play board: no clock or score, Roster + Subs
+           up top, and the whiteboard takes the freed space. */
+        <View style={styles.controls}>
+          {rosterButton(styles.footerBtn)}
+          {subsButton(styles.footerBtn)}
+        </View>
+      ) : wide ? (
         /* Tablet top row: the things that sit on top on phone — the clock and
            the scoreboard — on a single row. */
         <View style={[styles.controls, styles.controlsWide]}>
@@ -261,41 +270,58 @@ export default function TeamScreen() {
         onEmptySlot={(x, y) => setBringOnSlot({ x, y })}
       />
 
-      {!wide && segmentControls && (
-        <View style={styles.courtRow}>{segmentControls}</View>
-      )}
-
-      {wide ? (
-        /* Tablet bottom row: the things that sit at the bottom on phone —
-           formation, gear, reset and the roster/subs actions — on one row. */
-        <View style={[styles.footerWide, { paddingBottom: insets.bottom + 8 }]}>
-          {formationPicker(false)}
-          {gearBtn}
-          {resetBtn}
-          <View style={styles.spacer} />
-          {segmentControls}
-          <View style={styles.spacer} />
-          {rosterButton(styles.btnWide)}
-          {subsButton(styles.btnWide)}
-        </View>
-      ) : (
-        /* Phone: formation/gear/reset, then roster/subs, sit below the pitch. */
+      {isHoops ? (
+        /* Basketball bottom: play-board controls only — full/half + off/def,
+           then formation / gear / reset. Roster + Subs live up top. */
         <>
-          <View style={styles.controls}>
+          {segmentControls && (
+            <View style={styles.courtRow}>{segmentControls}</View>
+          )}
+          <View style={[styles.controls, { paddingBottom: insets.bottom + 8 }]}>
             {formationPicker(true)}
             {gearBtn}
             {resetBtn}
           </View>
-          <View
-            style={[
-              styles.footer,
-              styles.footerRow,
-              { paddingBottom: insets.bottom + 8 },
-            ]}
-          >
-            {rosterButton(styles.footerBtn)}
-            {subsButton(styles.footerBtn)}
-          </View>
+        </>
+      ) : (
+        <>
+          {!wide && segmentControls && (
+            <View style={styles.courtRow}>{segmentControls}</View>
+          )}
+
+          {wide ? (
+            /* Tablet bottom row: the things that sit at the bottom on phone —
+               formation, gear, reset and the roster/subs actions — on one row. */
+            <View style={[styles.footerWide, { paddingBottom: insets.bottom + 8 }]}>
+              {formationPicker(false)}
+              {gearBtn}
+              {resetBtn}
+              <View style={styles.spacer} />
+              {segmentControls}
+              <View style={styles.spacer} />
+              {rosterButton(styles.btnWide)}
+              {subsButton(styles.btnWide)}
+            </View>
+          ) : (
+            /* Phone: formation/gear/reset, then roster/subs, sit below the pitch. */
+            <>
+              <View style={styles.controls}>
+                {formationPicker(true)}
+                {gearBtn}
+                {resetBtn}
+              </View>
+              <View
+                style={[
+                  styles.footer,
+                  styles.footerRow,
+                  { paddingBottom: insets.bottom + 8 },
+                ]}
+              >
+                {rosterButton(styles.footerBtn)}
+                {subsButton(styles.footerBtn)}
+              </View>
+            </>
+          )}
         </>
       )}
 
