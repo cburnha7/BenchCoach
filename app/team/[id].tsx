@@ -226,17 +226,24 @@ export default function TeamScreen() {
           title: team.name,
           headerBackTitle: 'Back',
           gestureEnabled: false,
+          // Basketball: a small Roster button lives in the header instead of a
+          // full control row, so the whiteboard starts right under the title.
+          // There's no Subs button — basketball subs are instant.
+          headerRight: isHoops
+            ? () => (
+                <Pressable
+                  style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
+                  onPress={() => setRosterOpen(true)}
+                  hitSlop={8}
+                >
+                  <Text style={styles.headerBtnText}>Roster</Text>
+                </Pressable>
+              )
+            : undefined,
         }}
       />
 
-      {isHoops ? (
-        /* Basketball is a simple play board: no clock or score, Roster + Subs
-           up top, and the whiteboard takes the freed space. */
-        <View style={styles.controls}>
-          {rosterButton(styles.footerBtn)}
-          {subsButton(styles.footerBtn)}
-        </View>
-      ) : wide ? (
+      {isHoops ? null : wide ? (
         /* Tablet top row: the things that sit on top on phone — the clock and
            the scoreboard — on a single row. */
         <View style={[styles.controls, styles.controlsWide]}>
@@ -278,7 +285,8 @@ export default function TeamScreen() {
 
       {isHoops ? (
         /* Basketball bottom: play-board controls only — full/half + off/def,
-           then formation / gear / reset. Roster + Subs live up top. */
+           then formation / gear / reset. Roster is the small header button;
+           there's no Subs button because basketball subs are instant. */
         <>
           {segmentControls && (
             <View style={styles.courtRow}>{segmentControls}</View>
@@ -398,6 +406,18 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   pressed: { opacity: 0.82 },
+  /** Compact header pill (basketball roster). */
+  headerBtn: {
+    height: 32,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    backgroundColor: theme.control,
+    borderWidth: 1,
+    borderColor: theme.controlBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBtnText: { color: theme.text, fontWeight: '800', fontSize: 14 },
   /** Basketball court-mode strip below the field. */
   courtRow: {
     flexDirection: 'row',

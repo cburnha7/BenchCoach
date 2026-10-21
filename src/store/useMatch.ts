@@ -267,6 +267,9 @@ export const useMatch = create<MatchStore>((set, get) => {
             ourFormations(sport, size, base.courtMode ?? 'full', base.side ?? 'offense').length - 1
           )
         ),
+        // Basketball subs are instant, so a queue saved by an older build has
+        // no button to run it — drop it rather than leave discs ringed.
+        queue: sport === 'basketball' ? [] : base.queue ?? [],
         // The tactics board starts clean each session.
         arrows: [],
         ghosts: [],

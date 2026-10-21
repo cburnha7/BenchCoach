@@ -23,14 +23,17 @@ type Props = {
 };
 
 /**
- * Two ways in: tap an on-field player to sub them off (queues a swap), or tap
- * an open spot to bring someone straight on. Either way this is just the bench,
- * least playing time first, minus anyone scratched, sent off, or already in a
- * queued sub. Cards are only offered when subbing a specific player off.
+ * Two ways in: tap an on-field player to sub them off, or tap an open spot to
+ * bring someone straight on. Either way this is just the bench, least playing
+ * time first, minus anyone scratched, sent off, or already in a queued sub.
+ * Soccer queues the swap (run with the Subs button at a stoppage); basketball
+ * has no queue — picking the incoming player swaps them on the spot. Cards are
+ * only offered when subbing a specific player off.
  */
 export function SubSheet({ outId, slot, onClose, color }: Props) {
   const match = useMatch((s) => s.match);
   const queueSub = useMatch((s) => s.queueSub);
+  const swap = useMatch((s) => s.swap);
   const dropQueued = useMatch((s) => s.dropQueued);
   const bringOnAt = useMatch((s) => s.bringOnAt);
   const giveCard = useMatch((s) => s.giveCard);
@@ -52,9 +55,11 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
   const outPens = out ? match.penalties[out.id] ?? [] : [];
 
   // If this player is already tied to a queued sub, offer to cancel it.
-  const qIndex = out
-    ? match.queue.findIndex((q) => q.out === out.id || q.in === out.id)
-    : -1;
+  // (Basketball never queues, so nothing to cancel there.)
+  const qIndex =
+    out && !isHoops
+      ? match.queue.findIndex((q) => q.out === out.id || q.in === out.id)
+      : -1;
   const qEntry = qIndex >= 0 ? match.queue[qIndex] : undefined;
   const nameOf = (id: string) =>
     match.roster.find((r) => r.id === id)?.name ?? 'Unknown';
@@ -67,7 +72,7 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
   };
 
   // Anyone scratched, sent off, fouled out, or already queued is off the table.
-  const queued = new Set(match.queue.flatMap((q) => [q.in, q.out]));
+  const queued = new Set(isHoops ? [] : match.queue.flatMap((q) => [q.in, q.out]));
   const bench = match.roster
     .filter(
       (p) =>
@@ -83,6 +88,7 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
   const pick = (inId: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (bringingOn && slot) bringOnAt(inId, slot.x, slot.y);
+    else if (out && isHoops) swap(out.id, inId);
     else if (out) queueSub(out.id, inId);
     onClose();
   };
@@ -116,7 +122,11 @@ export function SubSheet({ outId, slot, onClose, color }: Props) {
                   {out.name}
                 </Text>
                 <Text style={styles.sub}>
-                  {qEntry ? 'A sub is already queued' : 'comes off · tap who comes on'}
+                  {qEntry
+                    ? 'A sub is already queued'
+                    : isHoops
+                      ? 'comes off now · tap who comes on'
+                      : 'comes off · tap who comes on'}
                 </Text>
               </View>
             </>
