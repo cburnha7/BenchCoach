@@ -157,6 +157,10 @@ export default function TeamScreen() {
     </Pressable>
   );
 
+  // Basketball/lacrosse shapes belong to a role, so the picker says which:
+  // "Offense formation" with an OFF tag, or "Defense formation" with DEF.
+  const sided = team.sport === 'basketball' || team.sport === 'lacrosse';
+  const sideWord = match?.side === 'defense' ? 'Defense' : 'Offense';
   const formationPicker = (fill: boolean) =>
     ready ? (
       <FormationPicker
@@ -165,6 +169,8 @@ export default function TeamScreen() {
         onSelect={setFormation}
         inline={!fill}
         fill={fill}
+        title={sided ? `${sideWord} formation` : undefined}
+        badge={sided ? sideWord.slice(0, 3).toUpperCase() : undefined}
       />
     ) : null;
 

@@ -24,6 +24,12 @@ type Props = {
   fill?: boolean;
   /** Heading in the picker sheet. Defaults to "Formation". */
   title?: string;
+  /**
+   * Short tag shown before the shape name on the trigger ("OFF" / "DEF") so
+   * a basketball board always says which role the shape list belongs to,
+   * whichever way the Offense/Defense toggle is set.
+   */
+  badge?: string;
 };
 
 /**
@@ -38,6 +44,7 @@ export function FormationPicker({
   inline = false,
   fill = false,
   title = 'Formation',
+  badge,
 }: Props) {
   const [open, setOpen] = useState(false);
   const current = formations[index];
@@ -64,6 +71,7 @@ export function FormationPicker({
           dropping it makes this one line tall like every other control in the
           bar instead of standing a head above them.
         */}
+        {badge ? <Text style={styles.badge}>{badge}</Text> : null}
         <Text style={styles.current} numberOfLines={1}>
           {current?.name ?? '—'}
         </Text>
@@ -131,10 +139,18 @@ const styles = StyleSheet.create({
   triggerInline: { minWidth: 128 },
   triggerFill: { flex: 1 },
   pressed: { opacity: 0.85 },
+  badge: {
+    color: theme.textDim,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    marginRight: 8,
+  },
   current: {
     color: theme.text,
     fontSize: 15,
     fontWeight: '700',
+    flexShrink: 1,
   },
   caret: { color: theme.textDim, fontSize: 17, marginTop: -3, marginLeft: 8 },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: theme.scrim },

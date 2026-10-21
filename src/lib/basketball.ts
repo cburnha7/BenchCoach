@@ -6,7 +6,8 @@
 //    get-back defensive shape.
 //  - HALF court (470x500): the hoop is on the RIGHT (baseline right, half-court
 //    line left). This is where set offense and defense live, so it carries the
-//    real formations.
+//    real formations: four spread offensive sets (5 Out, 4 Out 1 In, 3 Out 2 In,
+//    Horns) and three defenses (Man, 2-3 Zone, 3-2 Zone).
 //
 // A team is shown as either its offense or its defense (the Off/Def toggle);
 // the opponent shadow, when on, takes the opposite role.
@@ -59,62 +60,54 @@ const FULL_DEFENSE: Record<number, Formation[]> = {
 
 // ------------------------------ half court ----------------------------------
 
+// Half-court geometry the offense sits on (10 px/ft, rim at 412,250):
+//   - 3-pt arc radius 237.5 (23.75 ft) around the rim; corner lines at y=35 /
+//     y=465, 22 ft from the rim's axis. Perimeter spots stand ~25 ft out, a
+//     step beyond the arc, so the shape is clearly "outside".
+//   - Paint x 275..465, y 170..330. Elbows at (275,170)/(275,330). Low blocks
+//     ~7 ft off the baseline (x≈400), a step outside the lane line.
+// Spots (all measured from the rim):
+const TOP = { x: 157, y: 250 }; //  top of the key, 25.5 ft
+const WING_L = { x: 232, y: 70 }; //  45° wing, 25.5 ft
+const WING_R = { x: 232, y: 430 };
+const CORNER_L = { x: 440, y: 32 }; //  deep corner, just beyond the corner 3
+const CORNER_R = { x: 440, y: 468 };
+const SLOT_L = { x: 177, y: 150 }; //  guard "slot", lane line extended, 25.5 ft
+const SLOT_R = { x: 177, y: 350 };
+const FT_WING_L = { x: 255, y: 55 }; // free-throw-line-extended wing, 25 ft
+const FT_WING_R = { x: 255, y: 445 };
+const ELBOW_L = { x: 268, y: 165 }; // a step above the elbow
+const ELBOW_R = { x: 268, y: 335 };
+const BLOCK_L = { x: 400, y: 150 }; // low block, outside the lane
+const BLOCK_R = { x: 400, y: 350 };
+
 const HALF_OFFENSE: Record<number, Formation[]> = {
   5: [
     {
-      name: 'Man',
+      // Everyone on the perimeter: point, two wings, two corners. The lane is
+      // empty for drives and cuts.
+      name: '5 Out',
       labels: ['PG', 'SG', 'SF', 'PF', 'C'],
-      slots: [
-        { x: 95, y: 250 },
-        { x: 205, y: 120 },
-        { x: 205, y: 380 },
-        { x: 385, y: 200 },
-        { x: 385, y: 300 },
-      ],
+      slots: [TOP, WING_L, WING_R, CORNER_L, CORNER_R],
     },
     {
-      name: 'Spread',
+      // Two guards in the slots, two wings at the free-throw line extended,
+      // one post on the low block.
+      name: '4 Out 1 In',
       labels: ['PG', 'SG', 'SF', 'PF', 'C'],
-      slots: [
-        { x: 90, y: 250 },
-        { x: 200, y: 110 },
-        { x: 200, y: 390 },
-        { x: 415, y: 75 },
-        { x: 415, y: 425 },
-      ],
+      slots: [SLOT_L, SLOT_R, FT_WING_L, FT_WING_R, BLOCK_R],
     },
     {
+      // Point and two wings outside, two posts on the blocks.
+      name: '3 Out 2 In',
+      labels: ['PG', 'SG', 'SF', 'PF', 'C'],
+      slots: [TOP, WING_L, WING_R, BLOCK_L, BLOCK_R],
+    },
+    {
+      // Point up top, both bigs at the elbows, shooters spotted in the corners.
       name: 'Horns',
       labels: ['PG', 'PF', 'C', 'SG', 'SF'],
-      slots: [
-        { x: 110, y: 250 },
-        { x: 285, y: 195 },
-        { x: 285, y: 305 },
-        { x: 420, y: 75 },
-        { x: 420, y: 425 },
-      ],
-    },
-    {
-      name: '1-3-1',
-      labels: ['PG', 'SG', 'PF', 'SF', 'C'],
-      slots: [
-        { x: 90, y: 250 },
-        { x: 215, y: 110 },
-        { x: 275, y: 250 },
-        { x: 215, y: 390 },
-        { x: 400, y: 250 },
-      ],
-    },
-    {
-      name: '4 Out',
-      labels: ['PG', 'SG', 'SF', 'PF', 'C'],
-      slots: [
-        { x: 95, y: 250 },
-        { x: 205, y: 115 },
-        { x: 205, y: 385 },
-        { x: 415, y: 90 },
-        { x: 390, y: 295 },
-      ],
+      slots: [TOP, ELBOW_L, ELBOW_R, CORNER_L, CORNER_R],
     },
   ],
 };

@@ -61,7 +61,14 @@ export function BoardSettings({
               formations={oppFormations(match.sport, match.size, match.courtMode, match.side)}
               index={match.opponent.formationIdx}
               onSelect={setOpponentFormation}
-              title="Opponent formation"
+              title={
+                match.sport === 'basketball' || match.sport === 'lacrosse'
+                  ? // They take the opposite role from the one we're showing.
+                    match.side === 'offense'
+                    ? 'Opponent defense'
+                    : 'Opponent offense'
+                  : 'Opponent formation'
+              }
             />
           </View>
         )}
