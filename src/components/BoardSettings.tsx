@@ -28,6 +28,10 @@ export function BoardSettings({
 
   if (!match) return null;
 
+  // Basketball drives the opponent's shape from the Offense/Defense formation
+  // pickers on the board bar, so the gear only carries the on/off toggles.
+  const isHoops = match.sport === 'basketball';
+
   return (
     <Modal
       visible={visible}
@@ -55,7 +59,7 @@ export function BoardSettings({
           />
         </View>
 
-        {match.opponent.on && (
+        {!isHoops && match.opponent.on && (
           <View style={styles.oppFormation}>
             <FormationPicker
               formations={oppFormations(match.sport, match.size, match.courtMode, match.side)}

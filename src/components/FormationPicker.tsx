@@ -15,6 +15,8 @@ type Props = {
   formations: { name: string }[];
   index: number;
   onSelect: (index: number) => void;
+  /** Small prefix shown in the trigger (e.g. "OFF") to label the picker. */
+  label?: string;
   /**
    * On a wide bar the trigger sizes to its content. Left to flex it swallowed
    * the whole row for the sake of a short formation name.
@@ -35,6 +37,7 @@ export function FormationPicker({
   formations,
   index,
   onSelect,
+  label,
   inline = false,
   fill = false,
   title = 'Formation',
@@ -64,6 +67,7 @@ export function FormationPicker({
           dropping it makes this one line tall like every other control in the
           bar instead of standing a head above them.
         */}
+        {label ? <Text style={styles.triggerLabel}>{label}</Text> : null}
         <Text style={styles.current} numberOfLines={1}>
           {current?.name ?? '—'}
         </Text>
@@ -131,7 +135,15 @@ const styles = StyleSheet.create({
   triggerInline: { minWidth: 128 },
   triggerFill: { flex: 1 },
   pressed: { opacity: 0.85 },
+  triggerLabel: {
+    color: theme.textDim,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    marginRight: 7,
+  },
   current: {
+    flex: 1,
     color: theme.text,
     fontSize: 15,
     fontWeight: '700',

@@ -49,6 +49,7 @@ export default function TeamScreen() {
   const load = useMatch((s) => s.load);
   const unload = useMatch((s) => s.unload);
   const setFormation = useMatch((s) => s.setFormation);
+  const setOpponentFormation = useMatch((s) => s.setOpponentFormation);
   const runAllQueued = useMatch((s) => s.runAllQueued);
   const resetPositions = useMatch((s) => s.resetPositions);
   const clearBoard = useMatch((s) => s.clearBoard);
@@ -105,6 +106,31 @@ export default function TeamScreen() {
   const queued = ready ? match.queue.length : 0;
   const boardActive =
     ready && (match.opponent.on || trailsOn || match.arrows.length > 0);
+
+  // Basketball formation model: an Offense set and a Defense set are two
+  // independent picks. Whoever's on offense uses the Offense set; whoever's on
+  // defense uses the Defense set. These map onto our index + the opponent's
+  // index depending on which side we are.
+  const courtMode = match?.courtMode ?? 'full';
+  const side = match?.side ?? 'offense';
+  const offenseList = ready ? ourFormations(team.sport, team.size, courtMode, 'offense') : [];
+  const defenseList = ready ? ourFormations(team.sport, team.size, courtMode, 'defense') : [];
+  const offenseIdx =
+    side === 'offense' ? match?.formationIdx ?? 0 : match?.opponent.formationIdx ?? 0;
+  const defenseIdx =
+    side === 'defense' ? match?.formationIdx ?? 0 : match?.opponent.formationIdx ?? 0;
+  const setOffenseSet = (i: number) => {
+    const m = useMatch.getState().match;
+    if (!m) return;
+    if (m.side === 'offense') setFormation(i);
+    else setOpponentFormation(i);
+  };
+  const setDefenseSet = (i: number) => {
+    const m = useMatch.getState().match;
+    if (!m) return;
+    if (m.side === 'defense') setFormation(i);
+    else setOpponentFormation(i);
+  };
 
   // Shared controls, reused between the tablet (one row) and phone layouts.
   const gearBtn = (
@@ -224,12 +250,13 @@ export default function TeamScreen() {
       />
 
       {isHoops ? (
-        /* Basketball is a simple play board: no clock or score, Roster + Subs
-           up top, and the whiteboard takes the freed space. */
-        <View style={styles.controls}>
-          {rosterButton(styles.footerBtn)}
-          {subsButton(styles.footerBtn)}
-        </View>
+        /* Basketball is a simple play board: no clock or score. Subs are run
+           from this bar, which only appears when some are queued. */
+        queued > 0 ? (
+          <Pressable style={styles.sendEmTop} onPress={runAllQueued}>
+            <Text style={styles.sendEmTopText}>Send Em · {queued} queued</Text>
+          </Pressable>
+        ) : null
       ) : wide ? (
         /* Tablet top row: the things that sit on top on phone — the clock and
            the scoreboard — on a single row. */
@@ -271,18 +298,73 @@ export default function TeamScreen() {
       />
 
       {isHoops ? (
-        /* Basketball bottom: play-board controls only — full/half + off/def,
-           then formation / gear / reset. Roster + Subs live up top. */
-        <>
-          {segmentControls && (
-            <View style={styles.courtRow}>{segmentControls}</View>
-          )}
-          <View style={[styles.controls, { paddingBottom: insets.bottom + 8 }]}>
-            {formationPicker(true)}
-            {gearBtn}
-            {resetBtn}
+        /* Basketball board controls, three rows:
+             Full/Half | Offense/Defense   (equal halves)
+             Offense formation | Defense formation
+             Roster | gear | Reset */
+        ready ? (
+          <View style={[styles.hoopsBar, { paddingBottom: insets.bottom + 8 }]}>
+            <View style={styles.hoopsRow}>
+              <View style={styles.segFill}>
+                {(['full', 'half'] as const).map((mode) => {
+                  const on = courtMode === mode;
+                  return (
+                    <Pressable
+                      key={mode}
+                      style={[styles.segFillBtn, on && styles.segOn]}
+                      onPress={() => setCourtMode(mode)}
+                    >
+                      <Text style={[styles.segText, on && styles.segTextOn]}>
+                        {mode === 'full' ? 'Full' : 'Half'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={styles.segFill}>
+                {(['offense', 'defense'] as const).map((s) => {
+                  const on = side === s;
+                  return (
+                    <Pressable
+                      key={s}
+                      style={[styles.segFillBtn, on && styles.segOn]}
+                      onPress={() => setSide(s)}
+                    >
+                      <Text style={[styles.segText, on && styles.segTextOn]}>
+                        {s === 'offense' ? 'Offense' : 'Defense'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.hoopsRow}>
+              <FormationPicker
+                fill
+                label="OFF"
+                formations={offenseList}
+                index={offenseIdx}
+                onSelect={setOffenseSet}
+                title="Offense formation"
+              />
+              <FormationPicker
+                fill
+                label="DEF"
+                formations={defenseList}
+                index={defenseIdx}
+                onSelect={setDefenseSet}
+                title="Defense formation"
+              />
+            </View>
+
+            <View style={styles.hoopsRow}>
+              {rosterButton(styles.footerBtn)}
+              {gearBtn}
+              {resetBtn}
+            </View>
           </View>
-        </>
+        ) : null
       ) : (
         <>
           {!wide && segmentControls && (
@@ -418,6 +500,32 @@ const styles = StyleSheet.create({
   segOn: { backgroundColor: theme.text },
   segText: { color: theme.text, fontWeight: '800', fontSize: 15 },
   segTextOn: { color: theme.bg },
+  /** Basketball board controls: three equal-gap rows below the court. */
+  hoopsBar: { paddingHorizontal: 12, paddingTop: 6, gap: 8 },
+  hoopsRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
+  /** A segmented toggle that fills its half of the row with two equal buttons. */
+  segFill: {
+    flex: 1,
+    flexDirection: 'row',
+    height: CONTROL_H,
+    borderRadius: radius.md,
+    backgroundColor: theme.control,
+    borderWidth: 1,
+    borderColor: theme.controlBorder,
+    overflow: 'hidden',
+  },
+  segFillBtn: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  /** Run-subs bar above the court, shown only when subs are queued. */
+  sendEmTop: {
+    marginHorizontal: 12,
+    marginTop: 6,
+    height: CONTROL_H,
+    borderRadius: radius.md,
+    backgroundColor: theme.queued,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendEmTopText: { color: theme.bg, fontWeight: '800', fontSize: 15 },
   gear: {
     width: 54,
     height: CONTROL_H,
